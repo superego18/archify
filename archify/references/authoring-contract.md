@@ -288,9 +288,10 @@ is not a removable-space budget. Frame IDs identify rendered lane indices.
 
 Run `validate workflow <source.json> --layout-json` and match those frames to
 source lanes and nodes. Check whether many steps share the last logical column
-and use large `yOffset` values. Readable-v2 currently reserves symmetric space
-around offsets and shares the base content height between lanes, so increasing
-one offset can enlarge otherwise sparse lanes.
+and use large `yOffset` values. Readable-v2 reserves symmetric space around
+center-relative offsets. With stacked nodes, omitted `meta.viewBox` and no
+absolute edge pins, it measures lanes independently; compatibility layouts can
+share the base height, so one offset can enlarge otherwise sparse lanes.
 
 Where the source's ownership and explicit geometry permit, redistribute steps
 across logical columns and meaningful lanes, keeping the main path monotonic.
@@ -299,6 +300,41 @@ or absolute pins prevent reflow, report that constraint instead of merging lanes
 or moving pins automatically. Validate the changed JSON, deliver a fresh HTML,
 then rerun browser checks and inspect the first screen; a static pass alone does
 not settle viewport fit. These are repair directions, not guaranteed coordinates.
+
+#### Workflow spacing review
+
+`inspect-workflow-spacing` is advisory evidence, not a failed gate or a
+removable-space budget. `frameId` identifies a rendered lane; `nodeIds` map it
+back to source nodes. Measurements are SVG units, not browser pixels. The check
+reserves the lane/group title bands, node bounds, internal or explicit routes,
+relationship-label masks and text. Automatic inter-lane transit is excluded
+because it reroutes after a source edit. It suggests review when the difference
+between top and bottom empty space exceeds two typical node heights and 20% of
+the lane's content height. Necessary inter-lane routing still needs inspection.
+
+For a newly authored Workflow receiving this recommendation:
+
+1. Inspect the affected source lanes and route evidence. Preserve intentional
+   whitespace and user-fixed geometry. A frozen candidate, explicit `meta.viewBox`,
+   or any edge `via`, `labelAt`, `channelX` or `channelY` disables the centering
+   edit; report that constraint instead. Keep groups, route presets, ports and
+   all semantic content as authored.
+2. For each eligible affected lane, compute `low = min(yOffset - height / 2)`
+   and `high = max(yOffset + height / 2)` from its nodes, using actual heights
+   from `validate workflow <source.json> --layout-json` and zero for omitted
+   offsets. Subtract `(low + high) / 2` from **every** node's `yOffset` in that
+   lane. This preserves relative gaps, node sizes, columns, labels and topology;
+   it does not squeeze the gaps or change other lanes. Keep a copy first.
+3. Rerun complete `finalize` once using a fresh `--out-dir <folder>/spacing-review`
+   for its evidence. If a gate fails or affected asymmetric space grows, restore
+   the copy and finalize the restored source with a separate evidence directory.
+   Stop placement edits after this one round; report any remaining recommendation
+   or failure rather than removing pins, groups or required content.
+4. Capture with `visual-check` using a fresh evidence directory, then inspect
+   the screenshots at the actual sharing viewport (1440x900 by default). Check
+   lane balance, routes, labels and legibility. Report automated gates and actual
+   visual review separately. If browser capture is unavailable, disclose the
+   missing inspection rather than claiming the review is complete.
 
 ### Sequence
 

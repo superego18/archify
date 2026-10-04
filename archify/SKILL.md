@@ -77,7 +77,9 @@ When a passing Architecture receipt reports `visualReviewRecommendation.signals.
 
 When `layoutReviewRecommendation.action` is `inspect-sequence-width`, follow [Sequence width review](references/delivery-contract.md#sequence-width-review) before handing off a newly authored Sequence.
 
-Perceptual review is optional for ordinary generation, including a newly positioned Architecture. Use [Optional capture evidence](references/delivery-contract.md#optional-capture-evidence), with `--out-dir <folder>/visual-check`, when the user requests visual review, during development audits, or for a concrete route/browser concern. `visualReviewRecommendation` is advisory. Inspect captures before claiming visual quality; otherwise report automated checks only.
+When `layoutReviewRecommendation.action` is `inspect-workflow-spacing`, complete [Workflow spacing review](references/authoring-contract.md#workflow-spacing-review) before handing off a newly authored Workflow: one eligible source-centering edit, complete `finalize`, then screenshot inspection. A passing gate does not complete this review. For frozen or user-pinned candidates, preserve geometry and report the advice.
+
+Perceptual review is optional for ordinary generation with no required layout-review action, including a newly positioned Architecture. Use [Optional capture evidence](references/delivery-contract.md#optional-capture-evidence), with `--out-dir <folder>/visual-check`, when the user requests visual review, during development audits, or for a concrete route/browser concern. `visualReviewRecommendation` is advisory. Inspect captures before claiming visual quality; otherwise report automated checks only.
 
 Read [Delivery contract](references/delivery-contract.md) for failed gates, standalone commands, provenance/recovery, repeated delivery, exports, or opening. Recovery follows `deliver` → strict provenance `check` → `browser-check`; captures require strict provenance.
 

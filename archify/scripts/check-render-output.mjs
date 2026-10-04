@@ -174,6 +174,7 @@ if (svgMatches.length === 1) {
     arrows, labels: relationshipLabels,
   });
   const sequenceColumnSpace = collectSequenceColumnSpace({ svgAttrs, fragment: beforeLegend, nodeRects, arrows });
+  const workflowSpacing = collectWorkflowSpacing({ svgAttrs, fragment: beforeLegend, nodeRects, frames: compositionFrames, arrows, labels: relationshipLabels });
   const labelClearanceThreshold = qualityProfile === 'showcase' ? 4 : 2;
   const labelRouteMeasurements = collectLabelRouteClearance({
     labels: relationshipLabels,
@@ -266,6 +267,7 @@ if (svgMatches.length === 1) {
     },
     leadingSpace,
     ...(sequenceColumnSpace ? { sequenceColumnSpace } : {}),
+    ...(workflowSpacing ? { workflowSpacing } : {}),
     desktopReadability: desktopReadability.evidence,
     issues: [
       ...containerBorderRuns.map((hit) => ({
@@ -786,6 +788,89 @@ function collectArchitectureLeadingSpace({ svgAttrs, fragment, nodeRects, frames
     canvasHeight: height,
     typicalNodeHeight,
     reviewSuggested: gap > 2 * typicalNodeHeight && ratio > 0.2,
+  };
+}
+
+// Advisory only: measure asymmetric lane content without changing authored offsets.
+function collectWorkflowSpacing({ svgAttrs, fragment, nodeRects, frames, arrows, labels }) {
+  if (svgAttrs['data-layout-contract'] !== 'readable-v2') return null;
+  const evidence = { measured: false, reviewSuggested: false };
+  if (svgAttrs.transform || /<tspan\b/i.test(fragment)) return evidence;
+  const decorations = [];
+  for (const token of fragment.matchAll(SVG_TAG_TOKEN)) {
+    if (!token[2]) continue;
+    const name = token[2].toLowerCase();
+    if (token[1]) {
+      if (name === 'g') decorations.pop();
+      continue;
+    }
+    const attrs = parseAttrs(token[0]);
+    const decoration = decorations.at(-1) === true || (name === 'g'
+      && (Boolean(attrs['data-brand-mark']) || hasAttribute(token[0], 'data-semantic-sigil')));
+    if (!decoration && attrs.transform && ['g', 'path', 'line', 'rect', 'text'].includes(name)) return evidence;
+    if (name === 'text' && ['dx', 'dy', 'rotate'].some(attr => Object.hasOwn(attrs, attr))) return evidence;
+    if (name === 'g' && !/\/\s*>$/.test(token[0])) decorations.push(decoration);
+  }
+  const nodeCount = [...fragment.matchAll(/<g\b[^>]*\bdata-node-id=/gi)].length;
+  const lanes = frames.filter(frame => frame.kind === 'lane' && !frame.shape);
+  if (!lanes.length || !nodeRects.length || nodeRects.length !== nodeCount) return evidence;
+  const semanticArrows = arrows.filter(arrow => arrow.from && arrow.to);
+  if (semanticArrows.some(arrow => !arrow.routePoints.length)) return evidence;
+  const texts = [...fragment.matchAll(/<text\b([^>]*)>([\s\S]*?)<\/text>/gi)]
+    .map(match => textBox(parseAttrs(match[1]), stripTags(match[2]).trim()));
+  if (texts.some(box => !box)) return evidence;
+  const containsNode = (frame, node) => node.box[0] >= frame.x && node.box[1] >= frame.y
+    && node.box[0] + node.box[2] <= frame.x + frame.width
+    && node.box[1] + node.box[3] <= frame.y + frame.height;
+  const round = value => Math.round(value * 10) / 10;
+  const measurements = lanes.flatMap(frame => {
+    const nodes = nodeRects.filter(node => containsNode(frame, node));
+    if (!nodes.length) return [];
+    const nodeIds = new Set(nodes.map(node => node.id));
+    // Readable-v2 reserves a 30px title band. Group titles sit at their
+    // frame's top; auto-sized frame bodies themselves are not occupied work.
+    const groups = frames.filter(group => group.kind === 'group' && !group.shape
+      && group.x >= frame.x && group.x + group.width <= frame.x + frame.width
+      && group.y >= frame.y && group.y + group.height <= frame.y + frame.height);
+    const contentTop = Math.max(frame.y + 30, ...groups.map(group => group.y + 8));
+    const contentBottom = frame.y + frame.height;
+    const occupied = nodes.map(node => [node.box[1], node.box[1] + node.box[3]]);
+    const occupy = (left, top, right, bottom) => {
+      if (right < frame.x || left > frame.x + frame.width || bottom < contentTop || top > contentBottom) return;
+      occupied.push([Math.max(top, contentTop), Math.min(bottom, contentBottom)]);
+    };
+    for (const arrow of semanticArrows) {
+      // Automatic inter-lane ingress/egress reroutes after a source repair;
+      // it is not an internal obstacle. Explicit and internal paths reserve room.
+      if (arrow.automaticWorkflowRoute && !(nodeIds.has(arrow.from) && nodeIds.has(arrow.to))) continue;
+      for (const segment of arrow.segments) {
+        occupy(Math.min(segment.start[0], segment.end[0]), Math.min(segment.start[1], segment.end[1]),
+          Math.max(segment.start[0], segment.end[0]), Math.max(segment.start[1], segment.end[1]));
+      }
+    }
+    for (const { rect } of labels) occupy(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height);
+    for (const box of texts) occupy(box.x1, box.y1, box.x2, box.y2);
+    const occupiedTop = Math.min(...occupied.map(span => span[0]));
+    const occupiedBottom = Math.max(...occupied.map(span => span[1]));
+    const emptyTop = Math.max(0, occupiedTop - contentTop);
+    const emptyBottom = Math.max(0, contentBottom - occupiedBottom);
+    const heights = nodes.map(node => node.box[3]).sort((a, b) => a - b);
+    const typicalNodeHeight = heights[Math.floor(heights.length / 2)];
+    const excess = Math.abs(emptyTop - emptyBottom);
+    const ratio = excess / (contentBottom - contentTop);
+    return [{
+      frameId: frame.id, nodeIds: [...nodeIds], laneHeight: frame.height,
+      contentTop: round(contentTop), contentBottom: round(contentBottom),
+      occupiedTop: round(occupiedTop), occupiedBottom: round(occupiedBottom),
+      emptyTopPx: round(emptyTop), emptyBottomPx: round(emptyBottom),
+      asymmetricSpacePx: round(excess), asymmetricSpaceRatio: Math.round(ratio * 1000) / 1000,
+      typicalNodeHeight, reviewSuggested: excess > 2 * typicalNodeHeight && ratio > 0.2,
+    }];
+  });
+  return {
+    measured: true, reviewSuggested: measurements.some(lane => lane.reviewSuggested),
+    measurement: 'SVG units; lane content, internal/explicit routes and text; automatic inter-lane transit excluded. Not a removable-space budget.',
+    lanes: measurements,
   };
 }
 

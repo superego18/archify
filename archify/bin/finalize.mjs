@@ -589,6 +589,15 @@ export function compactFinalizeReceipt(receipt) {
     };
   }
   const sequenceColumnSpace = receipt.stages?.check?.receipt?.composition?.sequenceColumnSpace;
+  const workflowSpacing = receipt.stages?.check?.receipt?.composition?.workflowSpacing;
+  if (receipt.ok && receipt.type === 'workflow' && workflowSpacing?.reviewSuggested === true) {
+    compact.layoutReviewRecommendation = {
+      action: 'inspect-workflow-spacing',
+      evidence: workflowSpacing,
+      reason: 'Lane content leaves substantial asymmetric vertical space after accounting for titles, internal/explicit routes and text. This is a layout suggestion, not a failed gate.',
+      repair: 'For a newly authored Workflow, read references/authoring-contract.md#workflow-spacing-review. Inspect the named frames and nodeIds; preserve user-fixed geometry and semantic content. Recenter eligible lane offsets once, rerun finalize, then inspect screenshots. Retain intentional or pinned layouts and report remaining advice instead of starting another placement round.',
+    };
+  }
   if (receipt.ok && receipt.type === 'sequence' && sequenceColumnSpace?.reviewSuggested === true) {
     compact.layoutReviewRecommendation = {
       action: 'inspect-sequence-width',
