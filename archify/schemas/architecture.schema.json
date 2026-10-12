@@ -83,6 +83,7 @@
           "label": { "type": "string", "minLength": 1 },
           "sublabel": { "type": "string" },
           "tag": { "type": "string" },
+          "note": { "type": "string", "description": "Fork extension: longer role or responsibility text shown in the Semantic Passport, not on the canvas." },
           "icon": { "$ref": "common.schema.json#/$defs/nodeIcon" },
           "brand": { "$ref": "common.schema.json#/$defs/brandMark" },
           "sources": { "$ref": "common.schema.json#/$defs/sourceReferences" },
