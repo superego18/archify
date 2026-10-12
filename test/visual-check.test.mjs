@@ -94,12 +94,13 @@ function fakeBrowser({
   stageGapAt,
   screenshotFailure,
   resolvedThemeAt,
+  graphics,
 } = {}) {
   const calls = [];
   return {
     calls,
-    async inspect({ width, height, theme, screenshotPath, writeScreenshot }) {
-      calls.push({ width, height, theme, screenshotPath });
+    async inspect({ width, height, theme, screenshotPath, writeScreenshot, measureGraphics }) {
+      calls.push({ width, height, theme, screenshotPath, ...(measureGraphics ? { measureGraphics } : {}) });
       if (screenshotPath && screenshotFailure?.({ width, height, theme })) {
         throw new Error('synthetic screenshot failure');
       }
@@ -147,6 +148,7 @@ function fakeBrowser({
         viewerChromeRequiredGap: 10,
         viewerChromeReserve: chromeCollision || stageClearanceFailure ? 0 : 44,
         viewerChromeActive: !chromeCollision && !stageClearanceFailure,
+        ...(measureGraphics && graphics !== undefined ? { graphics } : {}),
       };
     },
     async close() {},
@@ -3227,4 +3229,100 @@ test('browser cleanup failure publishes a failed receipt instead of successful e
   const saved = JSON.parse(fs.readFileSync(sidecarPaths(input).receipt, 'utf8'));
   assert.equal(saved.ok, false);
   assert.deepEqual(saved.captures.screenshots, []);
+});
+
+
+function measuredGraphics(profile, issues) {
+  const counts = { nodeText: 0, arrow: 0, label: 0, icon: 0 };
+  for (const issue of issues) counts[issue.check] += 1;
+  return {
+    profile,
+    thresholds: { nodeTextPaddingX: 4, nodeTextPaddingY: 3, arrowShaftMinimum: 6, labelClearance: 4, iconAspectTolerance: 0.05 },
+    counts,
+    issueCount: issues.length,
+    issues,
+  };
+}
+
+const arrowDefect = {
+  check: 'arrow', defect: true, subject: { kind: 'edge', id: 'a-to-b', from: 'a', to: 'b' },
+  lastSegment: 10, arrowhead: 13.5, shaft: -3.5, requiredShaft: 6,
+};
+const labelShortfall = {
+  check: 'label', defect: false, subject: { kind: 'edge', id: 'a-to-b', from: 'a', to: 'b' },
+  label: 'edge-label', text: 'reads', obstacle: { kind: 'node', id: 'b', text: null }, overlap: false, gap: 1.4, required: 4,
+};
+
+test('browser-check measures graphic quality once, on the first light viewport', async () => {
+  const browser = fakeBrowser({ graphics: measuredGraphics('standard', []) });
+  const result = await runBrowserCheck({
+    artifactPath: artifact('graphics-once.html'),
+    chromePath: '/fake/chrome',
+    browserFactory: async () => browser,
+  });
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(browser.calls.filter((call) => call.measureGraphics).map(({ width, height, theme }) => [width, height, theme]),
+    [[VISUAL_CHECK_VIEWPORTS[0].width, VISUAL_CHECK_VIEWPORTS[0].height, 'light']]);
+  assert.equal(result.receipt.graphics.status, 'pass');
+  assert.equal(summarizeBrowserEvidence(result.receipt).checks.graphics, 'pass');
+});
+
+test('graphic findings warn standard diagrams without closing the gate', async () => {
+  const result = await runBrowserCheck({
+    artifactPath: artifact('graphics-standard.html'),
+    chromePath: '/fake/chrome',
+    browserFactory: async () => fakeBrowser({ graphics: measuredGraphics('standard', [arrowDefect, labelShortfall]) }),
+  });
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.receipt.status, 'pass');
+  assert.equal(result.receipt.graphics.status, 'warn');
+  const graphic = result.receipt.diagnostics.filter(({ code }) => code === 'viewer/arrow-visible-length' || code === 'viewer/label-clearance');
+  assert.deepEqual(graphic.map(({ code, severity }) => [code, severity]),
+    [['viewer/arrow-visible-length', 'warning'], ['viewer/label-clearance', 'warning']]);
+  assert.equal(graphic[0].subject.graphic.id, 'a-to-b');
+  assert.equal(graphic[0].evidence.shaft, -3.5);
+  assert.match(graphic[0].supportedFixes[0], /at least 19\.5px/);
+});
+
+test('a measured graphic defect fails a showcase diagram; a clearance shortfall only warns', async () => {
+  const failing = await runBrowserCheck({
+    artifactPath: artifact('graphics-showcase-defect.html'),
+    chromePath: '/fake/chrome',
+    browserFactory: async () => fakeBrowser({ graphics: measuredGraphics('showcase', [arrowDefect, labelShortfall]) }),
+  });
+  assert.equal(failing.exitCode, 1);
+  assert.equal(failing.receipt.status, 'fail');
+  assert.equal(failing.receipt.graphics.status, 'fail');
+  assert.equal(failing.receipt.containment.status, 'pass', 'graphic findings do not rewrite containment');
+  assert.equal(failing.receipt.diagnostics.find(({ code }) => code === 'viewer/arrow-visible-length').severity, 'error');
+  assert.equal(failing.receipt.diagnostics.find(({ code }) => code === 'viewer/label-clearance').severity, 'warning');
+
+  const spacing = await runBrowserCheck({
+    artifactPath: artifact('graphics-showcase-spacing.html'),
+    chromePath: '/fake/chrome',
+    browserFactory: async () => fakeBrowser({ graphics: measuredGraphics('showcase', [labelShortfall]) }),
+  });
+  assert.equal(spacing.exitCode, 0);
+  assert.equal(spacing.receipt.graphics.status, 'warn');
+});
+
+test('graphic quality reports caps repeated diagnostics per code and keeps the full count', async () => {
+  const issues = Array.from({ length: 30 }, (_, index) => ({ ...labelShortfall, text: `label ${index}` }));
+  const result = await runBrowserCheck({
+    artifactPath: artifact('graphics-cap.html'),
+    chromePath: '/fake/chrome',
+    browserFactory: async () => fakeBrowser({ graphics: measuredGraphics('standard', issues) }),
+  });
+  assert.equal(result.receipt.graphics.issueCount, 30);
+  assert.equal(result.receipt.diagnostics.filter(({ code }) => code === 'viewer/label-clearance').length, 20);
+});
+
+test('a missing graphic measurement is reported as not measured instead of passing silently', async () => {
+  const result = await runBrowserCheck({
+    artifactPath: artifact('graphics-missing.html'),
+    chromePath: '/fake/chrome',
+    browserFactory: async () => fakeBrowser(),
+  });
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.receipt.graphics.status, 'not-measured');
 });

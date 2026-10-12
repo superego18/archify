@@ -450,6 +450,25 @@ explicit viewBoxes in other modes, unreadable text, horizontal overflow,
 clipping and Viewer chrome collisions remain failures. Do not add an internal
 diagram scroller or hide overflow.
 
+At the first light viewport the command also measures painted graphic quality
+in SVG user units and records it in the receipt's `graphics` section. Static
+checks estimate text width from character counts; these read the boxes the
+browser actually drew:
+
+| Code | Measures | Preferred spacing |
+| --- | --- | --- |
+| `viewer/node-text-overflow` | Node text glyph box against its node frame | 4 px horizontal, 3 px vertical padding |
+| `viewer/arrow-visible-length` | Final route segment against the arrowhead length | 6 px of line behind the arrowhead |
+| `viewer/label-clearance` | Relationship and boundary labels against nodes, other labels and free-standing icons | 4 px |
+| `viewer/icon-geometry` | Icons that fail to load, stretch beyond 5% of their aspect ratio, leave their node or cover its text | — |
+
+A measured defect — text outside its node, an arrowhead with no line behind
+it, a label painted over another element, or a broken icon — fails a
+`showcase` diagram with an `error` diagnostic. Spacing below the preferred
+value, and every finding in a `standard` diagram, is a `warning` that leaves
+the gate open; `graphics.status` is then `warn`. Repeated findings are capped
+at 20 diagnostics per code, while `graphics.issueCount` keeps the full count.
+
 `browser_evidence` in the handoff records only the outcome of this automated
 command:
 

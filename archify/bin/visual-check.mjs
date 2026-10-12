@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { graphicQualityExpression, graphicQualityReceipt } from '../renderers/shared/graphic-quality.mjs';
 import { createOwnedTempDirectory } from '../renderers/shared/owned-temp-directory.mjs';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -1581,7 +1582,7 @@ export class ChromeVisualBrowser {
     return attached.sessionId;
   }
 
-  async inspect({ artifactPath, width, height, theme, screenshotPath, writeScreenshot }) {
+  async inspect({ artifactPath, width, height, theme, screenshotPath, writeScreenshot, measureGraphics = false }) {
     const sessionId = await this.sessionPromise;
     await this.cdp.send('Emulation.setDeviceMetricsOverride', {
       width,
@@ -1800,6 +1801,7 @@ export class ChromeVisualBrowser {
     if (!metrics || !Number.isFinite(metrics.scrollWidth) || !Number.isFinite(metrics.scrollHeight)) {
       throw new Error('Chrome returned incomplete containment metrics.');
     }
+    if (measureGraphics) metrics.graphics = await evaluate(this.cdp, sessionId, graphicQualityExpression(), true);
 
     if (screenshotPath) {
       const capture = await this.cdp.send('Page.captureScreenshot', {
@@ -2001,7 +2003,7 @@ export function summarizeBrowserEvidence(receipt) {
     deliveryReceiptId: receipt.deliveryReceiptId,
     state: receipt.state,
     chrome: receipt.chrome,
-    checks: Object.fromEntries(['containment', 'readability', 'viewerChrome', 'themeStates', 'captures']
+    checks: Object.fromEntries(['containment', 'readability', 'viewerChrome', 'themeStates', 'graphics', 'captures']
       .filter((key) => receipt[key])
       .map((key) => [key, receipt[key].status])),
     error: receipt.error,
@@ -2229,6 +2231,7 @@ function baseReceipt({ artifactPath, artifact, sidecars, chrome, deliveryProvena
     themeStates: { status: 'fail', viewports: [] },
     readability: { status: 'fail', minimumProjectedNodeTextPx: MIN_PROJECTED_NODE_TEXT_PX, viewports: [] },
     viewerChrome: { status: 'fail', viewports: [] },
+    graphics: { status: 'fail', issueCount: 0, counts: null, issues: [] },
     captures: { status: capture ? 'fail' : 'not-requested', screenshots: [], contactSheet: null },
     sidecars: { ...sidecars, files: [] },
   };
@@ -2469,6 +2472,7 @@ async function runBrowserEvidence({
     receipt.readability.status = 'skipped';
     receipt.viewerChrome.status = 'skipped';
     receipt.themeStates.status = 'skipped';
+    receipt.graphics.status = 'skipped';
     if (capture) receipt.captures.status = 'skipped';
     receipt.error = 'Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path.';
     receipt.diagnostics = [failureDiagnostic({
@@ -2500,6 +2504,7 @@ async function runBrowserEvidence({
       { ...entry, stagedPath: ownership.stagedOutputs.screenshots[index].path },
     ]));
 
+    let measuredGraphics = null;
     try {
       for (const viewport of VISUAL_CHECK_VIEWPORTS) {
         const key = screenshotKey(viewport.width, viewport.height, 'light');
@@ -2508,6 +2513,7 @@ async function runBrowserEvidence({
           artifactPath: inspectionArtifact,
           ...viewport,
           theme: 'light',
+          measureGraphics: viewport === VISUAL_CHECK_VIEWPORTS[0],
           ...(screenshot ? {
             screenshotPath: screenshot.stagedPath,
             writeScreenshot: (bytes) => writeStagedEvidence(ownership, screenshot.path, bytes),
@@ -2524,6 +2530,7 @@ async function runBrowserEvidence({
             }
           }
         }
+        if (viewport === VISUAL_CHECK_VIEWPORTS[0]) measuredGraphics = metrics.graphics ?? null;
         observations.set(key, observation({ ...viewport, theme: 'light', metrics }));
       }
       for (const viewport of CAPTURE_VIEWPORTS) {
@@ -2590,6 +2597,15 @@ async function runBrowserEvidence({
       allObservations,
       readabilityObservations: receipt.readability.viewports, command,
     });
+    const firstViewport = VISUAL_CHECK_VIEWPORTS[0];
+    const graphics = graphicQualityReceipt(measuredGraphics, {
+      artifact,
+      viewport: { width: firstViewport.width, height: firstViewport.height, theme: 'light' },
+      command,
+    });
+    receipt.graphics = graphics.section;
+    receipt.diagnostics.push(...graphics.diagnostics);
+    const graphicsPass = receipt.graphics.status !== 'fail';
     receipt.themeStates.status = themeStatePass ? 'pass' : 'fail';
     receipt.containment.status = containmentPass ? 'pass' : 'fail';
     receipt.readability.status = readabilityPass ? 'pass' : 'fail';
@@ -2598,8 +2614,8 @@ async function runBrowserEvidence({
       receipt.captures.status = 'pass';
       receipt.captures.contactSheet = path.basename(outputs.contactSheet);
     }
-    receipt.status = containmentPass && themeStatePass && readabilityPass && viewerChromePass ? 'pass' : 'fail';
-    receipt.ok = containmentPass && themeStatePass && readabilityPass && viewerChromePass;
+    receipt.status = containmentPass && themeStatePass && readabilityPass && viewerChromePass && graphicsPass ? 'pass' : 'fail';
+    receipt.ok = containmentPass && themeStatePass && readabilityPass && viewerChromePass && graphicsPass;
     if (capture) writeStagedEvidence(ownership, outputs.contactSheet, contactSheetHtml({
       artifactPath: artifact,
       receipt,
@@ -2634,6 +2650,7 @@ async function runBrowserEvidence({
     receipt.readability.status = 'fail';
     receipt.viewerChrome.status = 'fail';
     receipt.themeStates.status = 'fail';
+    receipt.graphics.status = 'fail';
     receipt.captures.status = capture ? 'fail' : 'not-requested';
     receipt.captures.screenshots = [];
     receipt.captures.contactSheet = null;

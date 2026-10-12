@@ -205,6 +205,7 @@ function validStageReceipt(stage, receipt, quality, options) {
     && receipt.themeStates?.status === 'pass'
     && receipt.readability?.status === 'pass'
     && receipt.viewerChrome?.status === 'pass'
+    && (receipt.graphics === undefined || receipt.graphics.status !== 'fail')
     && validBrowserEvidence(receipt);
 }
 
