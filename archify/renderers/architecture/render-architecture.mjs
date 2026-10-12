@@ -13,6 +13,7 @@ import { gridLayout, resolveComponentPos, validateGridPlacement } from './grid.m
 import { createRouter } from './routing.mjs';
 import { bidirectionalEdgeAttrs, bidirectionalMarkerDefinitions } from '../fork/bidirectional.mjs';
 import { nodeNoteAttr, nodeNoteScript } from '../fork/node-note.mjs';
+import { boundaryAttrs, boundaryScript } from '../fork/boundary-note.mjs';
 import { placeAutomaticLabels, reservedLabelRect } from '../shared/automatic-labels.mjs';
 import { cleanRouteDetourProblems } from '../shared/route-quality.mjs';
 import {
@@ -1037,12 +1038,12 @@ function buildLayoutReport() {
 function renderBoundaryFrame(b, index) {
   const cls = b.kind === 'security-group' ? 'c-security-group' : 'c-region';
   const rx = b.kind === 'security-group' ? 8 : 12;
-  return `        <rect data-graph-role="structural-frame" data-composition-frame-kind="${esc(b.kind || 'boundary')}" data-composition-frame-id="${index}" data-composition-frame-label="${esc(b.label)}" x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" rx="${rx}" class="${cls}" stroke-width="1"/>`;
+  return `        <rect data-graph-role="structural-frame" data-composition-frame-kind="${esc(b.kind || 'boundary')}" data-composition-frame-id="${index}" data-composition-frame-label="${esc(b.label)}"${boundaryAttrs(b)} x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" rx="${rx}" class="${cls}" stroke-width="1"/>`;
 }
 
 function renderBoundaryLabel(b, index) {
   const labelCls = b.kind === 'security-group' ? 't-security' : 't-cloud';
-  return `        <g data-graph-role="structural-frame-label" data-composition-frame-id="${index}" data-composition-frame-kind="${esc(b.kind || 'boundary')}" data-composition-frame-label="${esc(b.label)}">
+  return `        <g data-graph-role="structural-frame-label" data-composition-frame-id="${index}" data-composition-frame-kind="${esc(b.kind || 'boundary')}" data-composition-frame-label="${esc(b.label)}"${boundaryAttrs(b, { focusable: true })}>
           <rect data-graph-role="structural-frame-label-mask" x="${b.title.x}" y="${b.title.y}" width="${b.title.width}" height="${b.title.height}" rx="3" class="c-mask"/>
           <text data-boundary-label="" x="${b.title.x + 4}" y="${b.title.y + b.title.baselineOffset}" class="${labelCls}" font-size="${b.title.fontSize}" font-weight="600">${esc(b.label)}</text>
         </g>`;
@@ -1165,7 +1166,7 @@ ${boundaries.map(renderBoundaryLabel).join('\n\n')}
 
         <!-- Legend -->
 ${renderLegend()}
-      </svg>${nodeNoteScript(arch.components || [])}`;
+      </svg>${nodeNoteScript(arch.components || [])}${boundaryScript(arch.boundaries)}`;
 }
 
 if (layoutJsonMode) {

@@ -17,3 +17,12 @@ Browser checks measure both ends: each end needs a visible shaft behind its arro
 | `note` | string | Role or responsibility text shown under the detail line of the Semantic Passport when the node is focused. Not drawn on the canvas, so it can be longer than `sublabel`; line breaks are kept. |
 
 A diagram that uses `note` carries one small fork script after the SVG; diagrams without notes are unchanged.
+
+## Architecture boundaries
+
+| Field | Type | Effect |
+|---|---|---|
+| `id` | id | Makes the boundary clickable. |
+| `note` | string | Description shown when the boundary is clicked. A note alone also makes it clickable. |
+
+Clicking the boundary frame or label (or Enter on the focused label) opens a panel with the note and the wrapped components; choosing a component opens its Semantic Passport. Escape or a click elsewhere closes it.
