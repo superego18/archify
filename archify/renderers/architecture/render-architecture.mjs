@@ -15,6 +15,7 @@ import { bidirectionalEdgeAttrs, bidirectionalMarkerDefinitions } from '../fork/
 import { nodeNoteAttr, nodeNoteScript } from '../fork/node-note.mjs';
 import { boundaryAttrs, boundaryScript } from '../fork/boundary-note.mjs';
 import { facetNodeAttr, facetProblems, facetScript, facetStripes, facetSwatch, withFacetLegend } from '../fork/facets.mjs';
+import { checkVariantCombinations, hasVariants, whenAttr, withVariants } from '../fork/variants.mjs';
 import { placeAutomaticLabels, reservedLabelRect } from '../shared/automatic-labels.mjs';
 import { cleanRouteDetourProblems } from '../shared/route-quality.mjs';
 import {
@@ -1061,7 +1062,7 @@ function renderConnectionPath(conn, index) {
     : '';
   const crossover = automaticRoute
     ? ` data-composition-crossover="halo"${conn.labelAt ? '' : ' data-composition-independent="true"'}` : '';
-  const edge = `        <path ${focusEdgeAttrs(conn.from, conn.to, conn.label, index, conn.id)} data-composition-points="${routePointsValue(routed.points)}"${crossover}${authoredStraightRouteAttrs(conn, routed.points)} d="${routed.d}" class="${cls}"${animateAttr(arch.meta, 'edge', index)} stroke-width="${strokeWidth}" marker-end="url(#${marker})"${bidirectionalEdgeAttrs(conn, marker)}/>`;
+  const edge = `        <path ${focusEdgeAttrs(conn.from, conn.to, conn.label, index, conn.id)} data-composition-points="${routePointsValue(routed.points)}"${crossover}${authoredStraightRouteAttrs(conn, routed.points)} d="${routed.d}" class="${cls}"${animateAttr(arch.meta, 'edge', index)} stroke-width="${strokeWidth}" marker-end="url(#${marker})"${bidirectionalEdgeAttrs(conn, marker)}${whenAttr(conn)}/>`;
   if (!automaticRoute) return edge;
   // The wrapper is presentation-only: viewer state remains on the one semantic
   // edge, while CSS can keep its preceding mask underlay at the same opacity.
@@ -1071,7 +1072,7 @@ function renderConnectionPath(conn, index) {
 function renderConnectionLabel(conn, index) {
   const box = connectionLabelBox(conn);
   if (!box) return '';
-  return `        <g data-detail="context" ${focusEdgeAttrs(conn.from, conn.to, conn.label, index, conn.id)}>
+  return `        <g data-detail="context" ${focusEdgeAttrs(conn.from, conn.to, conn.label, index, conn.id)}${whenAttr(conn)}>
           <rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="3" class="c-mask"/>
           <text x="${box.lx}" y="${box.ly}" class="${edgeLabelAccent(conn.variant)}" font-size="8" text-anchor="middle">${esc(conn.label)}</text>
         </g>`;
@@ -1092,7 +1093,7 @@ function renderComponent(c) {
   const brand = renderBrandMark(c, { x: c.x + c.width - 22, y: c.y + 6 });
   const labelFontSize = fittedNodeFontSize(c.label, brandLabelFitWidth(c, c.width), 11, 8);
   const passport = { kind: c.type, sublabel: c.sublabel, tag: c.tag, context: componentContext(c), ...brandMetadataFor(c) };
-  return `        <g ${focusNodeAttrs(c.id, c.label, passport, arch.meta.locale)}${nodeNoteAttr(c)}${facetNodeAttr(arch, c)}>
+  return `        <g ${focusNodeAttrs(c.id, c.label, passport, arch.meta.locale)}${nodeNoteAttr(c)}${facetNodeAttr(arch, c)}${whenAttr(c)}>
           ${focusNodeTitle(c.label, passport)}
           <rect x="${c.x}" y="${c.y}" width="${c.width}" height="${c.height}" rx="6" class="c-mask"/>
           <rect x="${c.x}" y="${c.y}" width="${c.width}" height="${c.height}" rx="6" class="${fill}"${animateAttr(arch.meta, 'node', componentSteps.get(c.id))} stroke-width="1.5"/>${facetStripes(arch, c)}
@@ -1187,13 +1188,14 @@ if (layoutJsonMode) {
   }
   if (!process.exitCode) console.log(JSON.stringify(buildLayoutReport(), null, 2));
 } else {
-  validateArchitecture();
+  if (!hasVariants(arch)) validateArchitecture();
+  await checkVariantCombinations(arch, cliArgs[2]);
   writeDiagram({
     outPath,
     template,
     diagramType: 'architecture',
     meta: arch.meta,
-    svg: renderSvg(),
+    svg: withVariants(renderSvg(), arch),
     cards: arch.cards,
     sourceEvidence,
   });
