@@ -119,8 +119,8 @@ export const GRAPHIC_QUALITY_SCRIPT = `(async function (T) {
   });
 
   // 2. The last segment must leave a visible shaft behind the arrowhead.
-  function markerLength(element) {
-    var reference = element.getAttribute('marker-end') || '';
+  function markerLength(element, attribute) {
+    var reference = element.getAttribute(attribute) || '';
     var match = /url\\(#([^)]+)\\)/.exec(reference);
     if (!match) return null;
     var marker = document.getElementById(match[1]);
@@ -134,30 +134,37 @@ export const GRAPHIC_QUALITY_SCRIPT = `(async function (T) {
     var scale = (units === 'userSpaceOnUse' ? 1 : strokeWidth) * (markerWidth / viewBoxWidth);
     return refX * scale;
   }
-  Array.from(svg.querySelectorAll('path[marker-end], line[marker-end], polyline[marker-end]')).forEach(function (route) {
+  Array.from(svg.querySelectorAll('path[marker-end], line[marker-end], polyline[marker-end], path[marker-start]')).forEach(function (route) {
     if (!visible(route) || /underlay/.test(route.getAttribute('data-graph-role') || '')) return;
-    var head = markerLength(route);
-    if (!head) return;
-    var last = null;
     var points = (route.getAttribute('data-composition-points') || '').split(';').map(function (pair) {
       var xy = pair.split(',').map(Number);
       return xy.length === 2 && xy.every(Number.isFinite) ? xy : null;
     }).filter(Boolean);
-    if (points.length >= 2) {
-      var a = points[points.length - 2], b = points[points.length - 1];
-      last = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    } else if (typeof route.getTotalLength === 'function') {
-      last = route.getTotalLength();
-    }
-    if (last === null || last >= head + T.arrowShaftMinimum) return;
-    issues.push({
-      check: 'arrow',
-      subject: edgeOwner(route) || { kind: 'route', id: route.getAttribute('id') },
-      defect: last - head <= 0,
-      lastSegment: round(last),
-      arrowhead: round(head),
-      shaft: floor1(last - head),
-      requiredShaft: T.arrowShaftMinimum
+    // Each end with a marker needs its own shaft; both heads share one segment
+    // when the route is a single straight run.
+    [['marker-end', points.length - 2, points.length - 1], ['marker-start', 1, 0]].forEach(function (end) {
+      var head = markerLength(route, end[0]);
+      if (!head) return;
+      var heads = head;
+      if (points.length === 2 && markerLength(route, end[0] === 'marker-end' ? 'marker-start' : 'marker-end')) heads = head * 2;
+      var segment = null;
+      if (points.length >= 2) {
+        var a = points[end[1]], b = points[end[2]];
+        segment = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      } else if (typeof route.getTotalLength === 'function') {
+        segment = route.getTotalLength();
+      }
+      if (segment === null || segment >= heads + T.arrowShaftMinimum) return;
+      issues.push({
+        check: 'arrow',
+        subject: edgeOwner(route) || { kind: 'route', id: route.getAttribute('id') },
+        end: end[0] === 'marker-end' ? 'target' : 'source',
+        defect: segment - heads <= 0,
+        lastSegment: round(segment),
+        arrowhead: round(heads),
+        shaft: floor1(segment - heads),
+        requiredShaft: T.arrowShaftMinimum
+      });
     });
   });
 
@@ -273,8 +280,8 @@ function describe(issue) {
   }
   if (issue.check === 'arrow') {
     return {
-      message: `The final segment of ${who} is ${issue.lastSegment}px, leaving ${issue.shaft}px of line behind a ${issue.arrowhead}px arrowhead.`,
-      fix: `move the endpoints apart or change the port so the final segment is at least ${issue.arrowhead + issue.requiredShaft}px`,
+      message: `The ${issue.end === 'source' ? 'first' : 'final'} segment of ${who} is ${issue.lastSegment}px, leaving ${issue.shaft}px of line behind ${issue.end === 'source' ? 'its source' : 'a'} ${issue.arrowhead}px arrowhead.`,
+      fix: `move the endpoints apart or change the port so that segment is at least ${issue.arrowhead + issue.requiredShaft}px`,
     };
   }
   if (issue.check === 'label') {

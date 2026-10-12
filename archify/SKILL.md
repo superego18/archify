@@ -117,3 +117,7 @@ When shell access is unavailable, hand-place architecture SVG into `assets/templ
 ## Output
 
 Return the checked HTML as an absolute path, diagram type, validation summary, specification/artifact receipt, browser-evidence status, and truthful visual-review status. Do not claim success for a non-zero command or claim visual inspection you did not perform.
+
+## Fork extensions
+
+This fork adds optional fields. Read [Fork extensions](references/fork-extensions.md) before using one.

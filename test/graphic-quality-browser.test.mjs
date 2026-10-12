@@ -31,6 +31,7 @@ function injectProbes(html) {
 <text data-node-label="" x="${x + 30}" y="${y + 19}" font-size="11" text-anchor="middle">An overflowing probe label</text>
 <image href="missing-probe-icon.png" x="${x + 4}" y="${y + 4}" width="12" height="12"/></g>
 <path data-edge-from="probe-a" data-edge-to="probe-b" data-edge-id="probe-short" data-composition-points="${x},${y + 70};${x + 60},${y + 70};${x + 60},${y + 78}" d="M ${x} ${y + 70} L ${x + 60} ${y + 70} L ${x + 60} ${y + 78}" class="a-default" fill="none" marker-end="url(#arrowhead)"/>
+<path data-edge-from="probe-c" data-edge-to="probe-d" data-edge-id="probe-short-source" data-composition-points="${x + 100},${y + 90};${x + 100},${y + 98};${x + 160},${y + 98}" d="M ${x + 100} ${y + 90} L ${x + 100} ${y + 98} L ${x + 160} ${y + 98}" class="a-default" fill="none" marker-start="url(#arrowhead)"/>
 <g data-detail="context" data-edge-from="probe-a" data-edge-to="probe-b" data-edge-id="probe-label"><text x="${x + 30}" y="${y + 26}" font-size="8" text-anchor="middle">probe label</text></g>`;
   return html.slice(0, index) + probes + html.slice(index);
 }
@@ -68,6 +69,11 @@ test('browser-check measures painted text, arrow, label and icon geometry', asyn
   assert.equal(arrow.severity, 'error');
   assert.equal(arrow.evidence.lastSegment, 8);
   assert.ok(arrow.evidence.arrowhead > 8);
+
+  const source = find('viewer/arrow-visible-length', ({ subject }) => subject.graphic?.id === 'probe-short-source');
+  assert.ok(source, 'an 8px first segment behind a source arrowhead is reported');
+  assert.equal(source.evidence.end, 'source');
+  assert.match(source.message, /first segment/);
 
   const label = find('viewer/label-clearance', ({ evidence }) => evidence.obstacle?.id === 'probe-node');
   assert.ok(label, 'a relationship label painted over a node is reported');
