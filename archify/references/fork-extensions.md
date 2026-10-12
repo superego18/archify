@@ -79,4 +79,4 @@ Rules:
 - A connection disappears with either endpoint; a boundary keeps only its visible members and disappears when none remain.
 - Every combination (at most 256) is rendered on its own and must pass the normal layout checks; a failure names the combination. Each combination's routes, label positions and boundary boxes are the ones the viewer applies.
 - The delivered SVG is the default combination; the other elements wait as markup and join the diagram when a combination needs them. A "구성 선택"/"Variants" panel at the top right switches options.
-- Known limits: legend counts and the node list count every option, not only the visible ones.
+- Legend counts and the node list follow the chosen combination.

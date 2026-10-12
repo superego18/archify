@@ -376,6 +376,38 @@ const VARIANT_SCRIPT = `(function () {
     if (visible) element.removeAttribute('data-variant-hidden');
     else element.setAttribute('data-variant-hidden', 'true');
   }
+  // The legend badges and the node list are built once by the viewer from
+  // every node; keep their counts and entries to the chosen combination.
+  function syncIndexes() {
+    var visible = Array.prototype.slice.call(svg.querySelectorAll('g[data-node-id]')).filter(function (node) {
+      return !node.hasAttribute('data-variant-hidden');
+    });
+    document.querySelectorAll('[data-legend-kind]').forEach(function (entry) {
+      var kind = entry.getAttribute('data-legend-kind');
+      var count = visible.filter(function (node) { return node.getAttribute('data-node-kind') === kind; }).length;
+      entry.setAttribute('data-legend-count', String(count));
+      var text = entry.querySelector('[data-legend-count-badge] text');
+      if (text) text.textContent = String(count);
+      if (count) entry.removeAttribute('data-legend-zero');
+      else entry.setAttribute('data-legend-zero', '');
+    });
+    var ids = {};
+    visible.forEach(function (node) { ids[node.getAttribute('data-node-id')] = true; });
+    document.querySelectorAll('[data-outline-node]').forEach(function (button) {
+      var item = button.closest('li') || button;
+      item.style.display = ids[button.getAttribute('data-outline-node')] ? '' : 'none';
+    });
+    document.querySelectorAll('.node-outline-group').forEach(function (group) {
+      var shown = Array.prototype.slice.call(group.querySelectorAll('[data-outline-node]')).filter(function (button) {
+        return ids[button.getAttribute('data-outline-node')];
+      }).length;
+      group.style.display = shown ? '' : 'none';
+      var small = group.querySelector('.node-outline-heading small');
+      if (small) small.textContent = String(shown);
+    });
+    var count = document.getElementById('node-outline-count');
+    if (count && document.querySelector('[data-outline-node]')) count.textContent = String(visible.length);
+  }
   function apply() {
     var hiddenNodes = {};
     svg.querySelectorAll('g[data-node-id]').forEach(function (node) {
@@ -413,6 +445,7 @@ const VARIANT_SCRIPT = `(function () {
         part.element.setAttribute('y', part.y + box[1] - entry.y);
       });
     });
+    syncIndexes();
     var chip = document.getElementById('focus-chip');
     var focused = document.getElementById('focus-id');
     var clear = document.getElementById('btn-focus-clear');
