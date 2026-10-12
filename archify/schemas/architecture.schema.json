@@ -83,6 +83,12 @@
           "label": { "type": "string", "minLength": 1 },
           "sublabel": { "type": "string" },
           "tag": { "type": "string" },
+          "facets": {
+            "description": "Fork extension: facet id to value id, both declared in facets.",
+            "type": "object",
+            "propertyNames": { "$ref": "common.schema.json#/$defs/id" },
+            "additionalProperties": { "$ref": "common.schema.json#/$defs/id" }
+          },
           "note": { "type": "string", "description": "Fork extension: longer role or responsibility text shown in the Semantic Passport, not on the canvas." },
           "icon": { "$ref": "common.schema.json#/$defs/nodeIcon" },
           "brand": { "$ref": "common.schema.json#/$defs/brandMark" },
@@ -99,6 +105,34 @@
             "items": false,
             "minItems": 2,
             "maxItems": 2
+          }
+        }
+      }
+    },
+    "facets": {
+      "description": "Fork extension: concepts this diagram shows per component (for example provider, owner, stage) and their values.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "values"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "label": { "type": "string", "minLength": 1 },
+          "marker": { "enum": ["stripe-left", "stripe-right", "none"] },
+          "values": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "$ref": "common.schema.json#/$defs/id" },
+                "label": { "type": "string", "minLength": 1 },
+                "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+              }
+            }
           }
         }
       }

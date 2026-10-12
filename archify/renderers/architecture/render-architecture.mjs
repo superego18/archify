@@ -14,6 +14,7 @@ import { createRouter } from './routing.mjs';
 import { bidirectionalEdgeAttrs, bidirectionalMarkerDefinitions } from '../fork/bidirectional.mjs';
 import { nodeNoteAttr, nodeNoteScript } from '../fork/node-note.mjs';
 import { boundaryAttrs, boundaryScript } from '../fork/boundary-note.mjs';
+import { facetNodeAttr, facetProblems, facetScript, facetStripes, facetSwatch, withFacetLegend } from '../fork/facets.mjs';
 import { placeAutomaticLabels, reservedLabelRect } from '../shared/automatic-labels.mjs';
 import { cleanRouteDetourProblems } from '../shared/route-quality.mjs';
 import {
@@ -149,11 +150,11 @@ function boundaryLabelWidth(label, fontSize) {
   return Math.max(30, textUnits(label) * fontSize * 0.6 + 10);
 }
 
-const architectureLegendEntries = resolveLegend(
+const architectureLegendEntries = withFacetLegend(resolveLegend(
   arch.meta?.legend,
   LEGEND_CATALOG,
   new Set([...components.values()].map((component) => component.type)),
-);
+), arch);
 
 // One source for connection label geometry: the rect the containment rule
 // measures is the rect the SVG mask draws, the auto canvas covers, the legend
@@ -624,6 +625,7 @@ function validateArchitecture() {
     }
   }
 
+  problems.push(...facetProblems(arch));
   // Boundaries: every wrapped id must exist; the computed box must stay in view.
   for (const boundary of asArray(arch.boundaries)) {
     for (const id of asArray(boundary.wraps)) {
@@ -1090,10 +1092,10 @@ function renderComponent(c) {
   const brand = renderBrandMark(c, { x: c.x + c.width - 22, y: c.y + 6 });
   const labelFontSize = fittedNodeFontSize(c.label, brandLabelFitWidth(c, c.width), 11, 8);
   const passport = { kind: c.type, sublabel: c.sublabel, tag: c.tag, context: componentContext(c), ...brandMetadataFor(c) };
-  return `        <g ${focusNodeAttrs(c.id, c.label, passport, arch.meta.locale)}${nodeNoteAttr(c)}>
+  return `        <g ${focusNodeAttrs(c.id, c.label, passport, arch.meta.locale)}${nodeNoteAttr(c)}${facetNodeAttr(arch, c)}>
           ${focusNodeTitle(c.label, passport)}
           <rect x="${c.x}" y="${c.y}" width="${c.width}" height="${c.height}" rx="6" class="c-mask"/>
-          <rect x="${c.x}" y="${c.y}" width="${c.width}" height="${c.height}" rx="6" class="${fill}"${animateAttr(arch.meta, 'node', componentSteps.get(c.id))} stroke-width="1.5"/>
+          <rect x="${c.x}" y="${c.y}" width="${c.width}" height="${c.height}" rx="6" class="${fill}"${animateAttr(arch.meta, 'node', componentSteps.get(c.id))} stroke-width="1.5"/>${facetStripes(arch, c)}
           ${renderSemanticSigil(c.type, { icon: c.icon, x: c.x + 6, y: c.y + 6 })}${brand ? `\n          ${brand}` : ''}
           <text data-node-label=""${hasSub ? ' data-detail-anchor=""' : ''} x="${cx}" y="${labelY}" class="t-primary" font-size="${labelFontSize}" font-weight="600" text-anchor="middle">${esc(c.label)}</text>${sub}${tag}
         </g>`;
@@ -1124,7 +1126,7 @@ function renderLegend() {
       unfit: arch.meta?.legend === undefined ? 'hide' : 'error',
       diagramType: 'architecture',
     },
-    renderSwatch: (entry) => `<rect x="${entry.x}" y="${entry.baseline - 9}" width="16" height="10" rx="2.5" class="${componentFill[entry.kind] || 'c-external'}" stroke-width="1"/>`,
+    renderSwatch: facetSwatch((entry) => `<rect x="${entry.x}" y="${entry.baseline - 9}" width="16" height="10" rx="2.5" class="${componentFill[entry.kind] || 'c-external'}" stroke-width="1"/>`),
   });
 }
 
@@ -1166,7 +1168,7 @@ ${boundaries.map(renderBoundaryLabel).join('\n\n')}
 
         <!-- Legend -->
 ${renderLegend()}
-      </svg>${nodeNoteScript(arch.components || [])}${boundaryScript(arch.boundaries)}`;
+      </svg>${nodeNoteScript(arch.components || [])}${boundaryScript(arch.boundaries)}${facetScript(arch)}`;
 }
 
 if (layoutJsonMode) {
