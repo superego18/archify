@@ -48,9 +48,13 @@ export function visibleIn(when, combination) {
   ));
 }
 
+// A variant whose own `when` does not hold stays at its default, so that
+// combination is enumerated once instead of once per meaningless option.
 export function combinations(arch) {
   return variantsOf(arch).reduce((all, variant) => all.flatMap((partial) => (
-    variant.options.map((option) => ({ ...partial, [variant.id]: option.id }))
+    visibleIn(variant.when, partial)
+      ? variant.options.map((option) => ({ ...partial, [variant.id]: option.id }))
+      : [{ ...partial, [variant.id]: defaultChoice(variant) }]
   )), [{}]);
 }
 
@@ -61,13 +65,6 @@ export function combinationKey(arch, combination) {
 function referenceProblems(arch) {
   const problems = [];
   const options = new Map();
-  for (const variant of variantsOf(arch)) {
-    if (options.has(variant.id)) problems.push(`Variant ids must be unique: "${variant.id}".`);
-    const ids = new Set(variant.options.map((option) => option.id));
-    if (ids.size !== variant.options.length) problems.push(`Variant "${variant.id}" option ids must be unique.`);
-    if (variant.default !== undefined && !ids.has(variant.default)) problems.push(`Variant "${variant.id}" default "${variant.default}" is not one of its options.`);
-    options.set(variant.id, ids);
-  }
   const check = (owner, when) => {
     for (const [variantId, allowed] of Object.entries(when || {})) {
       const ids = options.get(variantId);
@@ -76,7 +73,18 @@ function referenceProblems(arch) {
         if (!ids.has(option)) problems.push(`${owner} uses unknown option "${option}" of variant "${variantId}" in when.`);
       }
     }
-  };
+  };  for (const variant of variantsOf(arch)) {
+    if (options.has(variant.id)) problems.push(`Variant ids must be unique: "${variant.id}".`);
+    const ids = new Set(variant.options.map((option) => option.id));
+    if (ids.size !== variant.options.length) problems.push(`Variant "${variant.id}" option ids must be unique.`);
+    if (variant.default !== undefined && !ids.has(variant.default)) problems.push(`Variant "${variant.id}" default "${variant.default}" is not one of its options.`);
+    for (const [variantId] of Object.entries(variant.when || {})) {
+      if (!options.has(variantId)) problems.push(`Variant "${variant.id}" when must name an earlier variant, not "${variantId}".`);
+    }
+    if (variant.when) check(`Variant "${variant.id}"`, variant.when);
+    options.set(variant.id, ids);
+  }
+
   for (const component of asArray(arch.components)) check(`Component "${component.id}"`, component.when);
   for (const [index, connection] of asArray(arch.connections).entries()) check(`Connection "${connection.id || `${connection.from}->${connection.to}#${index}`}"`, connection.when);
   for (const boundary of asArray(arch.boundaries)) check(`Boundary "${boundary.label}"`, boundary.when);
@@ -334,7 +342,8 @@ export function withVariants(svg, arch) {
       id: variant.id,
       label: variant.label,
       default: defaultChoice(variant),
-      options: variant.options.map((option) => ({ id: option.id, label: option.label })),
+      ...(variant.when ? { when: variant.when } : {}),
+      options: variant.options.map(({ id, label, pros, cons }) => ({ id, label, ...(pros ? { pros } : {}), ...(cons ? { cons } : {}) })),
     })),
     layouts: checkedLayouts.layouts,
     shapes: checkedLayouts.shapes,
@@ -379,12 +388,22 @@ const VARIANT_SCRIPT = `(function () {
       return Array.isArray(allowed) ? allowed.indexOf(choice[id]) !== -1 : allowed === choice[id];
     });
   }
+  // Hidden elements also lose their semantic hooks, so viewer features that
+  // query the live diagram (focus highlights, relationship lists, search)
+  // never pick them up; the hooks come back when the element is shown.
+  var HOOKS = ['data-node-id', 'data-edge-from', 'data-edge-to'];
   function show(element, visible) {
     var target = element.parentNode && element.parentNode.getAttribute && element.parentNode.getAttribute('data-graph-role') === 'automatic-crossover' ? element.parentNode : element;
     target.style.display = visible ? '' : 'none';
     if (visible) element.removeAttribute('data-variant-hidden');
     else element.setAttribute('data-variant-hidden', 'true');
+    HOOKS.forEach(function (name) {
+      var stash = 'data-variant-' + name.slice(5);
+      if (visible && element.hasAttribute(stash)) { element.setAttribute(name, element.getAttribute(stash)); element.removeAttribute(stash); }
+      if (!visible && element.hasAttribute(name)) { element.setAttribute(stash, element.getAttribute(name)); element.removeAttribute(name); }
+    });
   }
+  function nodeId(node) { return node.getAttribute('data-node-id') || node.getAttribute('data-variant-node-id'); }
   // The legend badges and the node list are built once by the viewer from
   // every node; keep their counts and entries to the chosen combination.
   function syncIndexes() {
@@ -417,16 +436,40 @@ const VARIANT_SCRIPT = `(function () {
     var count = document.getElementById('node-outline-count');
     if (count && document.querySelector('[data-outline-node]')) count.textContent = String(visible.length);
   }
+  function holds(when) {
+    if (!when) return true;
+    return Object.keys(when).every(function (id) {
+      var allowed = when[id];
+      return Array.isArray(allowed) ? allowed.indexOf(choice[id]) !== -1 : allowed === choice[id];
+    });
+  }
   function apply() {
+    // A variant that does not apply to the current choice falls back to its
+    // default, which is the combination that was checked for it.
+    data.variants.forEach(function (variant) {
+      var active = holds(variant.when);
+      if (!active) choice[variant.id] = variant.default;
+      document.querySelectorAll('#fork-variant-panel [data-variant-row="' + variant.id + '"]').forEach(function (row) {
+        row.style.opacity = active ? '' : '0.45';
+        row.querySelectorAll('button').forEach(function (button) { button.disabled = !active; button.style.cursor = active ? 'pointer' : 'not-allowed'; });
+      });
+    });
+    // Close a passport whose node is about to disappear while it is still findable.
+    var chip = document.getElementById('focus-chip');
+    var focused = document.getElementById('focus-id');
+    var clear = document.getElementById('btn-focus-clear');
+    var focusedNode = chip && !chip.hidden && focused ? svg.querySelector('g[data-node-id="' + CSS.escape(focused.textContent) + '"]') : null;
+    if (focusedNode && !matches(focusedNode) && clear) clear.click();
     var hiddenNodes = {};
-    svg.querySelectorAll('g[data-node-id]').forEach(function (node) {
+    svg.querySelectorAll('g[data-node-id], g[data-variant-node-id]').forEach(function (node) {
       var visible = matches(node);
+      if (!visible) hiddenNodes[nodeId(node)] = true;
       show(node, visible);
-      if (!visible) hiddenNodes[node.getAttribute('data-node-id')] = true;
     });
     var key = data.variants.map(function (variant) { return choice[variant.id]; }).join('|');
     var layout = data.layouts[key] || { b: {}, c: {} };
-    svg.querySelectorAll('[data-edge-from][data-edge-to][data-edge-key]').forEach(function (edge) {
+    svg.querySelectorAll('[data-edge-key]').forEach(function (edge) {
+      if (!edge.hasAttribute('data-edge-from') && !edge.hasAttribute('data-variant-edge-from')) return;
       var shape = layout.c[edge.getAttribute('data-edge-key')];
       show(edge, shape !== undefined);
       if (shape === undefined) return;
@@ -456,10 +499,6 @@ const VARIANT_SCRIPT = `(function () {
       });
     });
     syncIndexes();
-    var chip = document.getElementById('focus-chip');
-    var focused = document.getElementById('focus-id');
-    var clear = document.getElementById('btn-focus-clear');
-    if (chip && !chip.hidden && focused && hiddenNodes[focused.textContent] && clear) clear.click();
     document.querySelectorAll('#fork-variant-panel button[data-variant]').forEach(function (button) {
       button.setAttribute('aria-pressed', String(choice[button.getAttribute('data-variant')] === button.getAttribute('data-option')));
     });
@@ -497,6 +536,7 @@ const VARIANT_SCRIPT = `(function () {
     });
     data.variants.forEach(function (variant) {
       var row = document.createElement('div');
+      row.setAttribute('data-variant-row', variant.id);
       row.style.cssText = 'margin-top:0.45rem;';
       var name = document.createElement('div');
       name.textContent = variant.label;
@@ -512,14 +552,45 @@ const VARIANT_SCRIPT = `(function () {
         button.setAttribute('data-option', option.id);
         button.style.cssText = 'border:1px solid var(--frontend-stroke);border-radius:0.45rem;background:none;color:inherit;cursor:pointer;padding:0.25rem 0.35rem;font:inherit;';
         button.addEventListener('click', function () { choice[variant.id] = option.id; apply(); });
+        if (option.pros || option.cons) {
+          button.setAttribute('aria-describedby', 'fork-variant-tip');
+          ['pointerenter', 'focus'].forEach(function (type) { button.addEventListener(type, function () { tip(button, option); }); });
+          ['pointerleave', 'blur'].forEach(function (type) { button.addEventListener(type, function () { tipBox.hidden = true; }); });
+        }
         options.appendChild(button);
       });
       row.appendChild(options);
       body.appendChild(row);
     });
     box.appendChild(body);
+    // Trade-offs appear beside the option on hover or keyboard focus.
+    var tipBox = document.createElement('div');
+    tipBox.id = 'fork-variant-tip';
+    tipBox.setAttribute('role', 'tooltip');
+    tipBox.hidden = true;
+    tipBox.style.cssText = 'position:fixed;z-index:30;max-width:16rem;padding:0.45rem 0.55rem;border:1px solid var(--frontend-stroke);border-radius:0.5rem;'
+      + 'background:var(--toolbar-menu-bg);color:var(--toolbar-text);box-shadow:0 10px 28px rgba(0,0,0,0.25);font-size:0.7rem;line-height:1.45;pointer-events:none;';
+    document.body.appendChild(tipBox);
+    function tip(button, option) {
+      tipBox.textContent = '';
+      [['+', option.pros, 'var(--backend-stroke)'], ['\u2212', option.cons, 'var(--security-stroke)']].forEach(function (line) {
+        if (!line[1]) return;
+        var row = document.createElement('div');
+        var sign = document.createElement('b');
+        sign.textContent = line[0] + ' ';
+        sign.style.color = line[2];
+        row.appendChild(sign);
+        row.appendChild(document.createTextNode(line[1]));
+        tipBox.appendChild(row);
+      });
+      tipBox.hidden = false;
+      var rect = button.getBoundingClientRect();
+      var width = tipBox.offsetWidth;
+      tipBox.style.left = Math.max(8, rect.left - width - 8) + 'px';
+      tipBox.style.top = Math.max(8, rect.top) + 'px';
+    }
     var style = document.createElement('style');
-    style.textContent = '#fork-variant-panel button[aria-pressed="true"]{background:var(--frontend-stroke) !important;color:var(--toolbar-menu-bg) !important;font-weight:600;}';
+    style.textContent = '[data-variant-hidden]{display:none !important}#fork-variant-panel button[aria-pressed="true"]{background:var(--frontend-stroke) !important;color:var(--toolbar-menu-bg) !important;font-weight:600;}';
     box.appendChild(style);
     chip.parentNode.insertBefore(box, chip.nextSibling);
     apply();

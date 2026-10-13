@@ -95,3 +95,27 @@ test('boundary titles take the position each combination was validated with', (t
   const mask = /data-graph-role="structural-frame-label-mask" x="([\d.]+)" y="([\d.]+)"/.exec(page);
   assert.deepEqual([Number(mask[1]), Number(mask[2])], [ecs[4], ecs[5]], 'the default view uses the ECS title position');
 });
+
+test('a conditional variant is checked once while it does not apply; options carry trade-offs', (t) => {
+  const input = diagram();
+  input.variants.push({
+    id: 'cache', label: 'Cache', when: { host: 'ecs' },
+    options: [{ id: 'none', label: 'None', pros: 'Nothing to run' }, { id: 'redis', label: 'Redis', pros: 'Fast reads', cons: 'One more service' }],
+  });
+  input.components.push({ id: 'redis', type: 'database', label: 'Redis', pos: [560, 225], size: [120, 60], when: { host: 'ecs', cache: 'redis' } });
+  const { result, html } = render(t, input);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const data = JSON.parse(/<script type="application\/json" id="fork-variants-data">(.*?)<\/script>/.exec(html())[1]);
+  assert.deepEqual(Object.keys(data.layouts).sort(), ['apps|none', 'ecs|none', 'ecs|redis']);
+  const cache = data.variants.find((variant) => variant.id === 'cache');
+  assert.deepEqual(cache.when, { host: 'ecs' });
+  assert.deepEqual(cache.options[1], { id: 'redis', label: 'Redis', pros: 'Fast reads', cons: 'One more service' });
+});
+
+test('a variant condition must name an earlier variant', (t) => {
+  const input = diagram();
+  input.variants[0].when = { later: 'x' };
+  const { result } = render(t, input);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stdout + result.stderr, /earlier variant/);
+});

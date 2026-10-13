@@ -71,6 +71,8 @@ Variants let one diagram hold alternative designs that the reader switches betwe
 | Field | Type | Effect |
 |---|---|---|
 | `variants[]` | `{ id, label, default?, options[] }` | Each variant has two or more options; `default` (else the first option) is shown first. |
+| `variants[].when` | object | Earlier variant choices under which this variant applies. Otherwise its buttons are disabled, it stays at its default, and its combinations are checked once. |
+| `variants[].options[].pros` / `cons` | string | Trade-offs shown beside the option on hover or keyboard focus. |
 | `when` on components, connections, boundaries | object | Variant id → option id or list of ids. The element shows only when every listed variant matches. |
 
 Rules:
@@ -79,4 +81,4 @@ Rules:
 - A connection disappears with either endpoint; a boundary keeps only its visible members and disappears when none remain.
 - Every combination (at most 256) is rendered on its own and must pass the normal layout checks; a failure names the combination. Each combination's routes, label positions and boundary boxes are the ones the viewer applies.
 - The delivered SVG is the default combination; the other elements wait as markup and join the diagram when a combination needs them. A "구성 선택"/"Variants" panel at the top right switches options.
-- Legend counts and the node list follow the chosen combination.
+- Legend counts and the node list follow the chosen combination. Hidden elements drop their node and edge hooks, so focus highlights, relationship lists and search ignore them.
