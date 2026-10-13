@@ -68,13 +68,13 @@ test('sigil swaps in a fork glyph at the type sigil place, in and out of the slo
     { id: 'b', type: 'backend', label: 'B', pos: [300, 225], size: [120, 60] },
   ] });
   assert.equal(plain.result.status, 0, plain.result.stdout + plain.result.stderr);
-  assert.match(plain.html(), /data-semantic-sigil="users" data-fork-sigil="" style="stroke-width:2\.025"[^>]*transform="translate\(46 231\) scale\(0\.458/);
+  assert.match(plain.html(), /data-semantic-sigil="users" data-fork-sigil=""[^>]*transform="translate\(46 231\) scale\(0\.458/);
   const slotted = render(t, undefined, { iconSlot: true, components: [
     { id: 'a', type: 'external', label: 'Users', pos: [40, 225], size: [140, 60], sigil: 'users' },
     { id: 'b', type: 'backend', label: 'B', pos: [300, 225], size: [120, 60] },
   ] });
   assert.equal(slotted.result.status, 0, slotted.result.stdout + slotted.result.stderr);
-  assert.match(slotted.html(), /data-semantic-sigil="users" data-fork-sigil="" data-icon-slot="" style="stroke-width:2\.025"[^>]*transform="translate\(50 241\) scale\(1\.16/);
+  assert.match(slotted.html(), /data-semantic-sigil="users" data-fork-sigil="" data-icon-slot=""[^>]*transform="translate\(50 241\) scale\(1\.16/);
 });
 
 test('unknown fork sigils are rejected', (t) => {

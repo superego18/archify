@@ -23,12 +23,9 @@ export const FORK_SIGILS = Object.freeze({
   // Drawn for this fork: a database with a small table at its lower right.
   // The two plain rects repaint the card behind the table so the cylinder
   // lines do not show through it.
-  "database-table": "<ellipse cx=\"9\" cy=\"5\" rx=\"7\" ry=\"2.5\"/> <path d=\"M2 5v12a7 2.5 0 0 0 14 0V5\"/> <path d=\"M2 11a7 2.5 0 0 0 14 0\"/> <rect x=\"11\" y=\"11\" width=\"12\" height=\"12\" rx=\"2\" class=\"c-mask\" style=\"stroke:none\"/> <rect x=\"11\" y=\"11\" width=\"12\" height=\"12\" rx=\"2\" class=\"c-database\" style=\"stroke:none\"/> <rect x=\"12.5\" y=\"12.5\" width=\"9.5\" height=\"9.5\" rx=\"1.5\"/> <path d=\"M12.5 15.7h9.5M12.5 18.9h9.5M17.25 12.5v9.5\"/>",
+  "database-table": "<ellipse cx=\"9\" cy=\"5\" rx=\"7\" ry=\"2.5\"/> <path d=\"M2 5v12a7 2.5 0 0 0 14 0V5\"/> <path d=\"M2 11a7 2.5 0 0 0 14 0\"/> <rect x=\"11\" y=\"11\" width=\"12\" height=\"12\" rx=\"2\" class=\"c-mask\" style=\"stroke:none\"/> <rect x=\"11\" y=\"11\" width=\"12\" height=\"12\" rx=\"2\" class=\"c-database\" style=\"stroke:none\"/> <rect x=\"12.5\" y=\"12.5\" width=\"9.5\" height=\"9.5\" rx=\"1.5\" style=\"stroke-width:1.1\"/> <path d=\"M12.5 15.7h9.5M12.5 18.9h9.5M17.25 12.5v9.5\" style=\"stroke-width:1.1\"/>",
 });
 
 export const FORK_SIGIL_GRID = 24;
 
-// Glyphs whose lines fill most of the grid read heavier than the others at the
-// same stroke; this factor evens out their painted weight.
-export const FORK_SIGIL_WEIGHT = Object.freeze({ table: 0.62 });
 
