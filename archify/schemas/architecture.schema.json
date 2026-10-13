@@ -84,6 +84,7 @@
           "sublabel": { "type": "string" },
           "tag": { "type": "string" },
           "when": { "$ref": "#/$defs/forkWhen" },
+          "vendorTint": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$", "description": "Fork extension: card wash colour in the vendor notation." },
           "iconImage": { "type": "string", "pattern": "^data:image/(svg\\+xml|png);base64,[A-Za-z0-9+/=]+$", "maxLength": 200000, "description": "Fork extension: a self-contained SVG or PNG data URI drawn as the node icon." },
           "facets": {
             "description": "Fork extension: facet id to value id, both declared in facets.",
@@ -110,6 +111,12 @@
           }
         }
       }
+    },
+    "notationToggle": {
+      "description": "Fork extension: with iconSlot, lets the reader switch between type symbols (C4) and a vendor style (iconImage, no sigil otherwise, vendorTint).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "c4Label": { "type": "string", "minLength": 1 }, "vendorLabel": { "type": "string", "minLength": 1 } }
     },
     "iconSlot": { "type": "boolean", "description": "Fork extension: true gives every card a left icon slot filled by its type sigil (or iconImage)." },
     "shortcuts": { "type": "boolean", "description": "Fork extension: false turns off the viewer's single-key shortcuts." },

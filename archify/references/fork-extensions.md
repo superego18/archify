@@ -94,3 +94,5 @@ Rules:
 Top-level `"iconSlot": true` gives every card the same left slot and fills it with the card's type sigil scaled to 28×28 (or its `iconImage`), so all cards share one layout.
 
 Browser checks measure graphic quality in every variant combination (`graphics.combinations` in the receipt); an issue found only in a non-default combination names it as `variant combination <key>`.
+
+With `iconSlot`, top-level `"notationToggle": { "c4Label"?, "vendorLabel"? }` adds a notation switch (inside the variant panel when there is one). The type-symbol notation (C4 style: every card shows its type sigil) is the default; the vendor notation follows vendor reference diagrams: cards with `iconImage` show that icon, other cards drop the sigil and centre their text, and `components[].vendorTint` (`#RRGGBB`) washes a card (for example bronze, silver and gold layers). Browser checks measure both notations in every variant combination.

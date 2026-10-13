@@ -61,3 +61,15 @@ test('iconSlot moves every type sigil into the slot at slot size', (t) => {
   assert.match(card, /data-semantic-sigil="database"[^>]*transform="translate\(50 241\) scale\(1\.75\)" data-icon-slot=""/);
   assert.match(card, /<text data-node-label="" x="129"/);
 });
+
+test('notationToggle keeps both notations and starts with the type symbols', (t) => {
+  const { result, html } = render(t, svg, { iconSlot: true, notationToggle: {} });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const page = html();
+  const card = /<g id="node-a"[\s\S]*?\n {8}<\/g>/.exec(page)[0];
+  assert.match(card, /<g data-notation-only="c4">[\s\S]*data-semantic-sigil="database"/);
+  assert.match(card, /<g data-notation-only="vendor" style="display:none"><image data-node-icon-image=""/);
+  const other = /<g id="node-b"[\s\S]*?\n {8}<\/g>/.exec(page)[0];
+  assert.match(other, /<text data-notation-c4-x="379" data-notation-vendor-x="360"/, 'cards without an image centre their text in the vendor notation');
+  assert.equal(page.match(/<script data-archify-fork="notation">/g)?.length, 1);
+});
