@@ -20,6 +20,8 @@ export const FORK_SIGILS = Object.freeze({
   "database-search": "<path d=\"M21 11.693V5\"/> <path d=\"m22 22-1.875-1.875\"/> <path d=\"M3 12a9 3 0 0 0 8.697 2.998\"/> <path d=\"M3 5v14a9 3 0 0 0 9.28 2.999\"/> <circle cx=\"18\" cy=\"18\" r=\"3\"/> <ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/>",
   // Lucide (ISC): table
   "table": "<path d=\"M12 3v18\"/> <rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/> <path d=\"M3 9h18\"/> <path d=\"M3 15h18\"/>",
+  // Lucide (ISC): timer
+  "timer": "<path d=\"M10 2h4\"/> <path d=\"M12 14l3-3\"/> <circle cx=\"12\" cy=\"14\" r=\"8\"/>",
   // Drawn for this fork: a database with a small table at its lower right.
   // The two plain rects repaint the card behind the table so the cylinder
   // lines do not show through it.

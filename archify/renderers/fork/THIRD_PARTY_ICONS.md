@@ -1,6 +1,6 @@
 # Third-party icons in renderers/fork/sigils.mjs
 
-## Lucide (users, table, workflow, waves-horizontal, database-backup, database-zap, database-search)
+## Lucide (users, table, timer, workflow, waves-horizontal, database-backup, database-zap, database-search)
 
 https://lucide.dev
 
