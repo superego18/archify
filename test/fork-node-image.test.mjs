@@ -61,3 +61,27 @@ test('iconSlot moves every type sigil into the slot at slot size', (t) => {
   assert.match(card, /data-semantic-sigil="database"[^>]*transform="translate\(50 241\) scale\(1\.75\)" data-icon-slot=""/);
   assert.match(card, /<text data-node-label="" x="129"/);
 });
+
+test('sigil swaps in a fork glyph at the type sigil place, in and out of the slot', (t) => {
+  const plain = render(t, undefined, { components: [
+    { id: 'a', type: 'external', label: 'Users', pos: [40, 225], size: [140, 60], sigil: 'users' },
+    { id: 'b', type: 'backend', label: 'B', pos: [300, 225], size: [120, 60] },
+  ] });
+  assert.equal(plain.result.status, 0, plain.result.stdout + plain.result.stderr);
+  assert.match(plain.html(), /data-semantic-sigil="users" data-fork-sigil="" style="stroke-width:2\.025"[^>]*transform="translate\(46 231\) scale\(0\.458/);
+  const slotted = render(t, undefined, { iconSlot: true, components: [
+    { id: 'a', type: 'external', label: 'Users', pos: [40, 225], size: [140, 60], sigil: 'users' },
+    { id: 'b', type: 'backend', label: 'B', pos: [300, 225], size: [120, 60] },
+  ] });
+  assert.equal(slotted.result.status, 0, slotted.result.stdout + slotted.result.stderr);
+  assert.match(slotted.html(), /data-semantic-sigil="users" data-fork-sigil="" data-icon-slot="" style="stroke-width:2\.025"[^>]*transform="translate\(50 241\) scale\(1\.16/);
+});
+
+test('unknown fork sigils are rejected', (t) => {
+  const { result } = render(t, undefined, { components: [
+    { id: 'a', type: 'external', label: 'Users', pos: [40, 225], size: [140, 60], sigil: 'rocket' },
+    { id: 'b', type: 'backend', label: 'B', pos: [300, 225], size: [120, 60] },
+  ] });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stdout + result.stderr, /sigil/);
+});

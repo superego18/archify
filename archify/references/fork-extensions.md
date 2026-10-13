@@ -94,3 +94,5 @@ Rules:
 Top-level `"iconSlot": true` gives every card the same left slot and fills it with the card's type sigil scaled to 28×28 (or its `iconImage`), so all cards share one layout.
 
 Browser checks measure graphic quality in every variant combination (`graphics.combinations` in the receipt); an issue found only in a non-default combination names it as `variant combination <key>`.
+
+`components[].sigil` draws an extra line glyph in place of the type sigil, in the same tone and place (inside the icon slot too): `users`, `database-import`, `workflow`, `waves`, `database-sync`, `database-zap`, `database-search`, `table`. The glyphs come from Lucide (ISC) and Tabler Icons (MIT); their licences are in `renderers/fork/THIRD_PARTY_ICONS.md`.

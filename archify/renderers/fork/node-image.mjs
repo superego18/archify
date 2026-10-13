@@ -7,6 +7,7 @@
 // Top-level `"iconSlot": true` gives every card the same slot, filled by its
 // type sigil scaled to the slot size. Nodes using neither keep their exact bytes.
 import { esc } from '../shared/utils.mjs';
+import { FORK_SIGIL_GRID, FORK_SIGILS } from './sigils.mjs';
 
 export const ICON_SLOT = Object.freeze({ inset: 10, size: 28, gap: 6, end: 6 });
 
@@ -19,9 +20,23 @@ const SIGIL = / {10}<g aria-hidden="true" data-semantic-sigil="[^"]*"[^>]*>[\s\S
 // Sigils are drawn on a 16-unit grid.
 const SIGIL_GRID = 16;
 
+// Swaps the type sigil's drawing for a fork glyph, keeping its tone and place.
+function forkSigil(sigilMarkup, name, translate, size) {
+  return sigilMarkup
+    // Same painted line weight as the 16-unit built-in sigils (stroke 1.35).
+    .replace(/data-semantic-sigil="[^"]*"/, `data-semantic-sigil="${esc(name)}" data-fork-sigil="" style="stroke-width:${(1.35 * FORK_SIGIL_GRID / SIGIL_GRID).toFixed(3)}"`)
+    .replace(/transform="[^"]*"/, `transform="translate(${translate}) scale(${size / FORK_SIGIL_GRID})"`)
+    .replace(/(<g [^>]*>)[\s\S]*?(\n {10}<\/g>)/, `$1\n            ${FORK_SIGILS[name]}$2`);
+}
+
 export function withNodeImage(markup, component, arch = {}) {
   const image = typeof component?.iconImage === 'string';
-  if (!image && arch.iconSlot !== true) return markup;
+  const glyph = typeof component?.sigil === 'string' && Object.hasOwn(FORK_SIGILS, component.sigil) ? component.sigil : null;
+  if (!image && arch.iconSlot !== true) {
+    if (!glyph) return markup;
+    const sigil = SIGIL.exec(markup);
+    return sigil ? markup.replace(SIGIL, forkSigil(sigil[0], glyph, `${component.x + 6} ${component.y + 6}`, 11)) : markup;
+  }
   const shift = iconTextShift();
   const x = component.x + ICON_SLOT.inset;
   const y = component.y + (component.height - ICON_SLOT.size) / 2;
@@ -33,7 +48,9 @@ export function withNodeImage(markup, component, arch = {}) {
   } else {
     const sigil = SIGIL.exec(markup);
     if (!sigil) return markup;
-    slot = sigil[0].replace(/transform="[^"]*"/, `transform="translate(${x} ${y}) scale(${ICON_SLOT.size / SIGIL_GRID})" data-icon-slot=""`);
+    slot = glyph
+      ? forkSigil(sigil[0], glyph, `${x} ${y}`, ICON_SLOT.size).replace('data-fork-sigil=""', 'data-fork-sigil="" data-icon-slot=""')
+      : sigil[0].replace(/transform="[^"]*"/, `transform="translate(${x} ${y}) scale(${ICON_SLOT.size / SIGIL_GRID})" data-icon-slot=""`);
     if (!slot.endsWith('\n')) slot += '\n';
     body = markup.replace(SIGIL, '');
   }

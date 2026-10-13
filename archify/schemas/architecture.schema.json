@@ -84,6 +84,7 @@
           "sublabel": { "type": "string" },
           "tag": { "type": "string" },
           "when": { "$ref": "#/$defs/forkWhen" },
+          "sigil": { "enum": ["users", "database-import", "workflow", "waves", "database-sync", "database-zap", "database-search", "table"], "description": "Fork extension: an extra line glyph drawn in place of the type sigil." },
           "iconImage": { "type": "string", "pattern": "^data:image/(svg\\+xml|png);base64,[A-Za-z0-9+/=]+$", "maxLength": 200000, "description": "Fork extension: a self-contained SVG or PNG data URI drawn as the node icon." },
           "facets": {
             "description": "Fork extension: facet id to value id, both declared in facets.",
