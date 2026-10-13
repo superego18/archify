@@ -83,3 +83,33 @@ test('browser-check measures painted text, arrow, label and icon geometry', asyn
   const icon = find('viewer/icon-geometry', ({ evidence, subject }) => subject.graphic?.id === 'probe-node' && evidence.kind === 'load-failed');
   assert.ok(icon, 'an icon that cannot load is reported');
 });
+
+test('browser-check measures every variant combination, not only the default', async (t) => {
+  if (!Object.hasOwn(process.env, 'ARCHIFY_CHROME')) return t.skip('Set ARCHIFY_CHROME for real browser checks');
+  const chrome = findChrome();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-graphic-variants-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const input = path.join(dir, 'diagram.json');
+  const output = path.join(dir, 'diagram.html');
+  fs.writeFileSync(input, JSON.stringify({
+    schema_version: 1, diagram_type: 'architecture',
+    meta: { title: 'Variant graphics', quality_profile: 'showcase', output: 'diagram.html' },
+    // The icon slot narrows the text area, which only the painted text reveals.
+    iconSlot: true,
+    variants: [{ id: 'host', label: 'Host', options: [{ id: 'short', label: 'Short' }, { id: 'long', label: 'Long' }] }],
+    components: [
+      { id: 'db', type: 'database', label: 'DB', pos: [40, 225], size: [140, 60] },
+      { id: 'short', type: 'backend', label: 'API', pos: [320, 225], size: [140, 60], when: { host: 'short' } },
+      { id: 'long', type: 'backend', label: 'Order gateway service', pos: [320, 225], size: [140, 60], when: { host: 'long' } },
+    ],
+    connections: [{ from: 'short', to: 'db', label: 'read' }, { from: 'long', to: 'db', label: 'read' }],
+  }));
+  execFileSync(process.execPath, [path.join(root, 'bin/archify.mjs'), 'render', 'architecture', input, output]);
+  const result = await runBrowserCheck({ artifactPath: output, chromePath: chrome });
+  const { graphics, diagnostics } = result.receipt;
+  assert.equal(graphics.combinations, 2);
+  const overflow = diagnostics.find((entry) => entry.code === 'viewer/node-text-overflow' && entry.subject.graphic?.id === 'long');
+  assert.ok(overflow, 'the non-default option is measured');
+  assert.equal(overflow.evidence.variant, 'long');
+  assert.match(overflow.message, /variant combination long/);
+});

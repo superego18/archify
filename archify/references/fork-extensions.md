@@ -90,3 +90,7 @@ Rules:
 ## Node icon images
 
 `components[].iconImage` takes a self-contained `data:image/svg+xml;base64,…` or `data:image/png;base64,…` URI (up to 200,000 characters) and gives the card a 28×28 icon slot on its left, vertically centred, drops the type sigil and centres the text in the remaining width. Use it for official service icons (for example AWS Architecture Icons) that the author keeps beside the diagram; the fork bundles no third-party artwork. The artifact stays offline because the image is embedded.
+
+Top-level `"iconSlot": true` gives every card the same left slot and fills it with the card's type sigil scaled to 28×28 (or its `iconImage`), so all cards share one layout.
+
+Browser checks measure graphic quality in every variant combination (`graphics.combinations` in the receipt); an issue found only in a non-default combination names it as `variant combination <key>`.

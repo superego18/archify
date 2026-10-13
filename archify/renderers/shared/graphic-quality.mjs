@@ -22,7 +22,7 @@ const MAX_RECORDED_ISSUES = 200;
 
 // Evaluated inside the page with awaitPromise. All measurements are in SVG
 // user units, so the result does not depend on the viewport size.
-export const GRAPHIC_QUALITY_SCRIPT = `(async function (T) {
+const MEASURE_SCRIPT = `(async function (T) {
   var diagram = document.querySelector('.diagram-container');
   var svg = diagram && (
     diagram.querySelector(':scope > svg') ||
@@ -261,6 +261,34 @@ export const GRAPHIC_QUALITY_SCRIPT = `(async function (T) {
   return { profile: profile, thresholds: T, counts: counts, issueCount: issues.length, issues: issues.slice(0, ${MAX_RECORDED_ISSUES}) };
 })`;
 
+// A diagram with fork variants exposes window.__archifyVariants; every
+// combination is shown and measured in turn, and repeated issues are kept once
+// with the first combination that shows them.
+export const GRAPHIC_QUALITY_SCRIPT = `(async function (T) {
+  var measure = ${MEASURE_SCRIPT};
+  var api = window.__archifyVariants;
+  if (!api || !api.keys || !api.keys.length) return measure(T);
+  var merged = null;
+  var seen = {};
+  for (var i = 0; i < api.keys.length; i += 1) {
+    api.set(api.keys[i]);
+    var result = await measure(T);
+    if (!result) continue;
+    if (!merged) merged = { profile: result.profile, thresholds: T, counts: { nodeText: 0, arrow: 0, label: 0, icon: 0 }, issueCount: 0, issues: [], combinations: api.keys.length };
+    result.issues.forEach(function (issue) {
+      var id = JSON.stringify(issue);
+      if (seen[id]) return;
+      seen[id] = true;
+      issue.variant = api.keys[i];
+      merged.counts[issue.check] += 1;
+      merged.issueCount += 1;
+      if (merged.issues.length < ${MAX_RECORDED_ISSUES}) merged.issues.push(issue);
+    });
+  }
+  api.set(api.defaultKey);
+  return merged;
+})`;
+
 export function graphicQualityExpression(thresholds = GRAPHIC_QUALITY_THRESHOLDS) {
   return `${GRAPHIC_QUALITY_SCRIPT}(${JSON.stringify(thresholds)})`;
 }
@@ -328,7 +356,9 @@ export function graphicQualityReceipt(graphics, { artifact, viewport, command })
     const seen = perCode.get(code) || 0;
     perCode.set(code, seen + 1);
     if (seen >= MAX_DIAGNOSTICS_PER_CODE) continue;
-    const { message, fix } = describe(issue);
+    const described = describe(issue);
+    const message = issue.variant ? `${described.message} (variant combination ${issue.variant})` : described.message;
+    const { fix } = described;
     const { check, ...evidence } = issue;
     diagnostics.push({
       code,
@@ -343,6 +373,7 @@ export function graphicQualityReceipt(graphics, { artifact, viewport, command })
     section: {
       status,
       profile: graphics.profile,
+      ...(graphics.combinations ? { combinations: graphics.combinations } : {}),
       thresholds: graphics.thresholds,
       viewport,
       issueCount: graphics.issueCount,

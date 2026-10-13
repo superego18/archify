@@ -1161,7 +1161,7 @@ ${boundaries.map(renderBoundaryFrame).join('\n\n')}
 ${asArray(arch.connections).map(renderConnectionPath).join('\n')}
 
         <!-- Components -->
-${[...components.values()].map((c) => withNodeImage(renderComponent(c), c)).join('\n\n')}
+${[...components.values()].map((c) => withNodeImage(renderComponent(c), c, arch)).join('\n\n')}
 
         <!-- Connection labels -->
 ${asArray(arch.connections).map(renderConnectionLabel).join('\n')}

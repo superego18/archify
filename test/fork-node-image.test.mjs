@@ -11,7 +11,7 @@ const root = fileURLToPath(new URL('../archify/', import.meta.url));
 const cli = path.join(root, 'bin/archify.mjs');
 const svg = `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path fill="#c925d1" d="M0 0h64v64H0z"/></svg>').toString('base64')}`;
 
-function render(t, iconImage) {
+function render(t, iconImage, extra = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-node-image-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const source = path.join(dir, 'diagram.json');
@@ -24,6 +24,7 @@ function render(t, iconImage) {
       { id: 'b', type: 'backend', label: 'B', pos: [300, 225], size: [120, 60] },
     ],
     connections: [{ from: 'b', to: 'a', label: 'write' }],
+    ...extra,
   }));
   const result = spawnSync(process.execPath, [cli, 'render', 'architecture', source, output], { encoding: 'utf8' });
   return { result, html: () => fs.readFileSync(output, 'utf8') };
@@ -51,4 +52,12 @@ test('nodes without iconImage carry no image', (t) => {
   const { result, html } = render(t);
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.doesNotMatch(html(), /data-node-icon-image/);
+});
+
+test('iconSlot moves every type sigil into the slot at slot size', (t) => {
+  const { result, html } = render(t, undefined, { iconSlot: true });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const card = /<g id="node-a"[\s\S]*?\n {8}<\/g>/.exec(html())[0];
+  assert.match(card, /data-semantic-sigil="database"[^>]*transform="translate\(50 241\) scale\(1\.75\)" data-icon-slot=""/);
+  assert.match(card, /<text data-node-label="" x="129"/);
 });

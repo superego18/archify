@@ -504,6 +504,16 @@ const VARIANT_SCRIPT = `(function () {
     });
   }
   apply();
+  // Browser checks walk every combination through this hook.
+  window.__archifyVariants = {
+    keys: Object.keys(data.layouts),
+    defaultKey: data.variants.map(function (variant) { return variant.default; }).join('|'),
+    set: function (key) {
+      var parts = String(key).split('|');
+      data.variants.forEach(function (variant, index) { choice[variant.id] = parts[index]; });
+      apply();
+    },
+  };
   function panel() {
     var chip = document.getElementById('focus-chip');
     if (!chip || document.getElementById('fork-variant-panel')) return;
