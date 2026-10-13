@@ -82,3 +82,7 @@ Rules:
 - Every combination (at most 256) is rendered on its own and must pass the normal layout checks; a failure names the combination. Each combination's routes, label positions and boundary boxes are the ones the viewer applies.
 - The delivered SVG is the default combination; the other elements wait as markup and join the diagram when a combination needs them. A "구성 선택"/"Variants" panel at the top right switches options.
 - Legend counts and the node list follow the chosen combination. Hidden elements drop their node and edge hooks, so focus highlights, relationship lists and search ignore them.
+
+## Viewer shortcuts
+
+`"shortcuts": false` at the top level turns off the viewer's single-key shortcuts (T theme, S style, E export, F, M, L, R, /, ?, +, -, 0) and hides their hints. Escape, Enter and arrow keys keep working, and typing in any field — including fields inside shadow-DOM widgets — is unaffected.

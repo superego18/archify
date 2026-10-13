@@ -110,6 +110,7 @@
         }
       }
     },
+    "shortcuts": { "type": "boolean", "description": "Fork extension: false turns off the viewer's single-key shortcuts." },
     "variants": {
       "description": "Fork extension: alternatives the viewer can switch between. Elements opt in with when.",
       "type": "array",
