@@ -86,3 +86,7 @@ Rules:
 ## Viewer shortcuts
 
 `"shortcuts": false` at the top level turns off the viewer's single-key shortcuts (T theme, S style, E export, F, M, L, R, /, ?, +, -, 0) and hides their hints. Escape, Enter and arrow keys keep working, and typing in any field — including fields inside shadow-DOM widgets — is unaffected.
+
+## Node icon images
+
+`components[].iconImage` takes a self-contained `data:image/svg+xml;base64,…` or `data:image/png;base64,…` URI (up to 200,000 characters) and draws it at 20×20 in the card's top-left corner, over the type sigil. Use it for official service icons (for example AWS Architecture Icons) that the author keeps beside the diagram; the fork bundles no third-party artwork. The artifact stays offline because the image is embedded.

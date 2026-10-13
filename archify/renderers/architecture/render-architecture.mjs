@@ -17,6 +17,7 @@ import { boundaryAttrs, boundaryScript } from '../fork/boundary-note.mjs';
 import { facetNodeAttr, facetProblems, facetScript, facetStripes, facetSwatch, withFacetLegend } from '../fork/facets.mjs';
 import { checkVariantCombinations, hasVariants, variantBoundaryReport, whenAttr, withVariants } from '../fork/variants.mjs';
 import { shortcutScript } from '../fork/shortcuts.mjs';
+import { nodeImage } from '../fork/node-image.mjs';
 import { placeAutomaticLabels, reservedLabelRect } from '../shared/automatic-labels.mjs';
 import { cleanRouteDetourProblems } from '../shared/route-quality.mjs';
 import {
@@ -1098,7 +1099,7 @@ function renderComponent(c) {
           ${focusNodeTitle(c.label, passport)}
           <rect x="${c.x}" y="${c.y}" width="${c.width}" height="${c.height}" rx="6" class="c-mask"/>
           <rect x="${c.x}" y="${c.y}" width="${c.width}" height="${c.height}" rx="6" class="${fill}"${animateAttr(arch.meta, 'node', componentSteps.get(c.id))} stroke-width="1.5"/>${facetStripes(arch, c)}
-          ${renderSemanticSigil(c.type, { icon: c.icon, x: c.x + 6, y: c.y + 6 })}${brand ? `\n          ${brand}` : ''}
+          ${renderSemanticSigil(c.type, { icon: c.icon, x: c.x + 6, y: c.y + 6 })}${nodeImage(c)}${brand ? `\n          ${brand}` : ''}
           <text data-node-label=""${hasSub ? ' data-detail-anchor=""' : ''} x="${cx}" y="${labelY}" class="t-primary" font-size="${labelFontSize}" font-weight="600" text-anchor="middle">${esc(c.label)}</text>${sub}${tag}
         </g>`;
 }
