@@ -20,6 +20,10 @@ export const FORK_SIGILS = Object.freeze({
   "database-search": "<path d=\"M21 11.693V5\"/> <path d=\"m22 22-1.875-1.875\"/> <path d=\"M3 12a9 3 0 0 0 8.697 2.998\"/> <path d=\"M3 5v14a9 3 0 0 0 9.28 2.999\"/> <circle cx=\"18\" cy=\"18\" r=\"3\"/> <ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/>",
   // Lucide (ISC): table
   "table": "<path d=\"M12 3v18\"/> <rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/> <path d=\"M3 9h18\"/> <path d=\"M3 15h18\"/>",
+  // Drawn for this fork: a database with a small table at its lower right.
+  // The two plain rects repaint the card behind the table so the cylinder
+  // lines do not show through it.
+  "database-table": "<ellipse cx=\"9\" cy=\"5\" rx=\"7\" ry=\"2.5\"/> <path d=\"M2 5v12a7 2.5 0 0 0 14 0V5\"/> <path d=\"M2 11a7 2.5 0 0 0 14 0\"/> <rect x=\"11\" y=\"11\" width=\"12\" height=\"12\" rx=\"2\" class=\"c-mask\" style=\"stroke:none\"/> <rect x=\"11\" y=\"11\" width=\"12\" height=\"12\" rx=\"2\" class=\"c-database\" style=\"stroke:none\"/> <rect x=\"12.5\" y=\"12.5\" width=\"9.5\" height=\"9.5\" rx=\"1.5\"/> <path d=\"M12.5 15.7h9.5M12.5 18.9h9.5M17.25 12.5v9.5\"/>",
 });
 
 export const FORK_SIGIL_GRID = 24;
