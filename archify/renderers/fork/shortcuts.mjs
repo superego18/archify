@@ -13,6 +13,12 @@ const SHORTCUT_SCRIPT = `(function () {
     if (event.metaKey || event.ctrlKey || event.altKey || editable(event)) return;
     if (event.key && event.key.length === 1 && event.key !== ' ') event.preventDefault();
   }, true);
+  // The viewer's shortcut handler only sees the shadow host for keys typed in
+  // a shadow-DOM field (such as a chat widget), so it would treat "-" as zoom.
+  // This listener is registered before the viewer's and stops those keys there.
+  document.addEventListener('keydown', function (event) {
+    if (editable(event) && event.target !== (event.composedPath ? event.composedPath()[0] : event.target)) event.stopImmediatePropagation();
+  });
   var style = document.createElement('style');
   style.textContent = '.diagram-guide-shortcuts,.preset-menu-shortcut{display:none !important}';
   document.head.appendChild(style);
