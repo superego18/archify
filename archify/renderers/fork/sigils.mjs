@@ -26,5 +26,5 @@ export const FORK_SIGIL_GRID = 24;
 
 // Glyphs whose lines fill most of the grid read heavier than the others at the
 // same stroke; this factor evens out their painted weight.
-export const FORK_SIGIL_WEIGHT = Object.freeze({ table: 0.8 });
+export const FORK_SIGIL_WEIGHT = Object.freeze({ table: 0.62 });
 
