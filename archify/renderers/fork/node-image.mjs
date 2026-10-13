@@ -7,7 +7,7 @@
 // Top-level `"iconSlot": true` gives every card the same slot, filled by its
 // type sigil scaled to the slot size. Nodes using neither keep their exact bytes.
 import { esc } from '../shared/utils.mjs';
-import { FORK_SIGIL_GRID, FORK_SIGILS } from './sigils.mjs';
+import { FORK_SIGIL_GRID, FORK_SIGIL_WEIGHT, FORK_SIGILS } from './sigils.mjs';
 
 export const ICON_SLOT = Object.freeze({ inset: 10, size: 28, gap: 6, end: 6 });
 
@@ -24,7 +24,7 @@ const SIGIL_GRID = 16;
 function forkSigil(sigilMarkup, name, translate, size) {
   return sigilMarkup
     // Same painted line weight as the 16-unit built-in sigils (stroke 1.35).
-    .replace(/data-semantic-sigil="[^"]*"/, `data-semantic-sigil="${esc(name)}" data-fork-sigil="" style="stroke-width:${(1.35 * FORK_SIGIL_GRID / SIGIL_GRID).toFixed(3)}"`)
+    .replace(/data-semantic-sigil="[^"]*"/, `data-semantic-sigil="${esc(name)}" data-fork-sigil="" style="stroke-width:${(1.35 * FORK_SIGIL_GRID / SIGIL_GRID * (FORK_SIGIL_WEIGHT[name] ?? 1)).toFixed(3)}"`)
     .replace(/transform="[^"]*"/, `transform="translate(${translate}) scale(${size / FORK_SIGIL_GRID})"`)
     .replace(/(<g [^>]*>)[\s\S]*?(\n {10}<\/g>)/, `$1\n            ${FORK_SIGILS[name]}$2`);
 }
