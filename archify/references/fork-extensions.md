@@ -71,7 +71,7 @@ Variants let one diagram hold alternative designs that the reader switches betwe
 | Field | Type | Effect |
 |---|---|---|
 | `variants[]` | `{ id, label, default?, options[] }` | Each variant has two or more options; `default` (else the first option) is shown first. |
-| `variants[].when` | object | Earlier variant choices under which this variant applies. Otherwise its buttons are disabled, it stays at its default, and its combinations are checked once. |
+| `variants[].when` | object | Earlier variant choices under which this variant applies. The panel nests it under the last variant it names, with the condition spelled out; otherwise its buttons are disabled, it stays at its default, and its combinations are checked once. |
 | `variants[].options[].pros` / `cons` | string | Trade-offs shown beside the option on hover or keyboard focus. |
 | `when` on components, connections, boundaries | object | Variant id → option id or list of ids. The element shows only when every listed variant matches. |
 

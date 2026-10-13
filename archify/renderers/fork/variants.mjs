@@ -534,13 +534,42 @@ const VARIANT_SCRIPT = `(function () {
       body.hidden = !open;
       mark.textContent = open ? '\u25be' : '\u25b8';
     });
-    data.variants.forEach(function (variant) {
+    // A conditional variant sits under the variant its condition names, indented
+    // with the condition spelled out, so the panel reads as a hierarchy.
+    var byId = {};
+    data.variants.forEach(function (variant) { byId[variant.id] = variant; });
+    function parentOf(variant) {
+      var keys = variant.when ? Object.keys(variant.when) : [];
+      return keys.length ? keys[keys.length - 1] : null;
+    }
+    var ordered = [];
+    function visit(variant, depth) {
+      ordered.push({ variant: variant, depth: depth });
+      data.variants.forEach(function (child) { if (parentOf(child) === variant.id) visit(child, depth + 1); });
+    }
+    data.variants.forEach(function (variant) { if (!parentOf(variant) || !byId[parentOf(variant)]) visit(variant, 0); });
+    var korean = data.title === '\uad6c\uc131 \uc120\ud0dd';
+    ordered.forEach(function (entry) {
+      var variant = entry.variant;
       var row = document.createElement('div');
       row.setAttribute('data-variant-row', variant.id);
-      row.style.cssText = 'margin-top:0.45rem;';
+      row.setAttribute('data-variant-depth', String(entry.depth));
+      row.style.cssText = 'margin-top:0.45rem;' + (entry.depth
+        ? 'margin-left:' + (entry.depth * 0.7) + 'rem;padding-left:0.55rem;border-left:2px solid var(--frontend-stroke);' : '');
       var name = document.createElement('div');
       name.textContent = variant.label;
       name.style.cssText = 'opacity:0.75;margin-bottom:0.2rem;';
+      if (entry.depth) {
+        var parent = byId[parentOf(variant)];
+        var allowed = [].concat(variant.when[parent.id]).map(function (id) {
+          var option = parent.options.filter(function (candidate) { return candidate.id === id; })[0];
+          return option ? option.label : id;
+        }).join(' / ');
+        var condition = document.createElement('small');
+        condition.textContent = korean ? ' \u21b3 ' + allowed + '\uc77c \ub54c' : ' \u21b3 when ' + allowed;
+        condition.style.cssText = 'display:block;opacity:0.8;font-size:0.65rem;';
+        name.appendChild(condition);
+      }
       row.appendChild(name);
       var options = document.createElement('div');
       options.style.cssText = 'display:grid;grid-template-columns:repeat(' + variant.options.length + ',1fr);gap:0.25rem;';
