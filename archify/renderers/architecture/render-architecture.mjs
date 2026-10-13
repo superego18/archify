@@ -17,7 +17,7 @@ import { boundaryAttrs, boundaryScript } from '../fork/boundary-note.mjs';
 import { facetNodeAttr, facetProblems, facetScript, facetStripes, facetSwatch, withFacetLegend } from '../fork/facets.mjs';
 import { checkVariantCombinations, hasVariants, variantBoundaryReport, whenAttr, withVariants } from '../fork/variants.mjs';
 import { shortcutScript } from '../fork/shortcuts.mjs';
-import { notationScript, withNodeImage } from '../fork/node-image.mjs';
+import { withNodeImage } from '../fork/node-image.mjs';
 import { placeAutomaticLabels, reservedLabelRect } from '../shared/automatic-labels.mjs';
 import { cleanRouteDetourProblems } from '../shared/route-quality.mjs';
 import {
@@ -1171,7 +1171,7 @@ ${boundaries.map(renderBoundaryLabel).join('\n\n')}
 
         <!-- Legend -->
 ${renderLegend()}
-      </svg>${nodeNoteScript(arch.components || [])}${boundaryScript(arch.boundaries)}${facetScript(arch)}${shortcutScript(arch)}${notationScript(arch)}`;
+      </svg>${nodeNoteScript(arch.components || [])}${boundaryScript(arch.boundaries)}${facetScript(arch)}${shortcutScript(arch)}`;
 }
 
 if (layoutJsonMode) {

@@ -265,25 +265,7 @@ const MEASURE_SCRIPT = `(async function (T) {
 // combination is shown and measured in turn, and repeated issues are kept once
 // with the first combination that shows them.
 export const GRAPHIC_QUALITY_SCRIPT = `(async function (T) {
-  var single = ${MEASURE_SCRIPT};
-  // A fork notation toggle is measured in every notation as well.
-  var notation = window.__archifyNotation;
-  async function measure(T) {
-    if (!notation) return single(T);
-    var all = null;
-    for (var n = 0; n < notation.modes.length; n += 1) {
-      notation.set(notation.modes[n]);
-      var part = await single(T);
-      if (!part) continue;
-      part.issues.forEach(function (issue) { issue.notation = notation.modes[n]; });
-      if (!all) { all = part; continue; }
-      all.issues = all.issues.concat(part.issues);
-      all.issueCount += part.issueCount;
-      Object.keys(part.counts).forEach(function (key) { all.counts[key] += part.counts[key]; });
-    }
-    notation.set(notation.defaultMode);
-    return all;
-  }
+  var measure = ${MEASURE_SCRIPT};
   var api = window.__archifyVariants;
   if (!api || !api.keys || !api.keys.length) return measure(T);
   var merged = null;
@@ -375,8 +357,7 @@ export function graphicQualityReceipt(graphics, { artifact, viewport, command })
     perCode.set(code, seen + 1);
     if (seen >= MAX_DIAGNOSTICS_PER_CODE) continue;
     const described = describe(issue);
-    const where = [issue.variant && `variant combination ${issue.variant}`, issue.notation && `${issue.notation} notation`].filter(Boolean).join(', ');
-    const message = where ? `${described.message} (${where})` : described.message;
+    const message = issue.variant ? `${described.message} (variant combination ${issue.variant})` : described.message;
     const { fix } = described;
     const { check, ...evidence } = issue;
     diagnostics.push({
