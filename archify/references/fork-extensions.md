@@ -89,4 +89,4 @@ Rules:
 
 ## Node icon images
 
-`components[].iconImage` takes a self-contained `data:image/svg+xml;base64,…` or `data:image/png;base64,…` URI (up to 200,000 characters) and draws it at 20×20 in the card's top-left corner, over the type sigil. Use it for official service icons (for example AWS Architecture Icons) that the author keeps beside the diagram; the fork bundles no third-party artwork. The artifact stays offline because the image is embedded.
+`components[].iconImage` takes a self-contained `data:image/svg+xml;base64,…` or `data:image/png;base64,…` URI (up to 200,000 characters) and gives the card a 28×28 icon slot on its left, vertically centred, drops the type sigil and centres the text in the remaining width. Use it for official service icons (for example AWS Architecture Icons) that the author keeps beside the diagram; the fork bundles no third-party artwork. The artifact stays offline because the image is embedded.

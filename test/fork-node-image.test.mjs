@@ -29,10 +29,14 @@ function render(t, iconImage) {
   return { result, html: () => fs.readFileSync(output, 'utf8') };
 }
 
-test('iconImage draws the data URI in the card corner', (t) => {
+test('iconImage gets a left icon slot, replaces the sigil and shifts the text', (t) => {
   const { result, html } = render(t, svg);
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  assert.match(html(), /<image data-node-icon-image="" href="data:image\/svg\+xml;base64,[^"]+" x="47" y="229" width="20" height="20"/);
+  const card = /<g id="node-a"[\s\S]*?\n {8}<\/g>/.exec(html())[0];
+  // Card at x=40, 140x60: slot at x+10, vertically centred; text centre 110 + 19.
+  assert.match(card, /<image data-node-icon-image="" href="data:image\/svg\+xml;base64,[^"]+" x="50" y="241" width="28" height="28"/);
+  assert.doesNotMatch(card, /data-semantic-sigil/);
+  assert.match(card, /<text data-node-label="" x="129"/);
 });
 
 test('only self-contained SVG or PNG data URIs are accepted', (t) => {
