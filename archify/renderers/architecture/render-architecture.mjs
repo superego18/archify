@@ -15,7 +15,7 @@ import { bidirectionalEdgeAttrs, bidirectionalMarkerDefinitions } from '../fork/
 import { nodeNoteAttr, nodeNoteScript } from '../fork/node-note.mjs';
 import { boundaryAttrs, boundaryScript } from '../fork/boundary-note.mjs';
 import { facetNodeAttr, facetProblems, facetScript, facetStripes, facetSwatch, withFacetLegend } from '../fork/facets.mjs';
-import { checkVariantCombinations, hasVariants, whenAttr, withVariants } from '../fork/variants.mjs';
+import { checkVariantCombinations, hasVariants, variantBoundaryReport, whenAttr, withVariants } from '../fork/variants.mjs';
 import { placeAutomaticLabels, reservedLabelRect } from '../shared/automatic-labels.mjs';
 import { cleanRouteDetourProblems } from '../shared/route-quality.mjs';
 import {
@@ -1025,7 +1025,7 @@ function buildLayoutReport() {
     layout: grid ? { mode: 'grid', ...grid } : { mode: 'free' },
     viewBox,
     components: [...components.values()].map(componentBox),
-    boundaries: boundaries.map(boundaryBox),
+    boundaries: boundaries.map((b) => variantBoundaryReport(b, boundaryBox(b))),
     connections: asArray(arch.connections)
       .filter((conn) => components.has(conn.from) && components.has(conn.to))
       .map((conn) => {

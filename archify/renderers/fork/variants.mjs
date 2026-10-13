@@ -20,6 +20,14 @@ const REPORTED_FAILURES = 10;
 const renderer = fileURLToPath(new URL('../architecture/render-architecture.mjs', import.meta.url));
 
 let checkedLayouts = null;
+const CHILD_ENV = 'ARCHIFY_FORK_VARIANT_CHILD';
+
+// Combination renders also report where the renderer placed each boundary
+// title, which can move between combinations. Ordinary reports are unchanged.
+export function variantBoundaryReport(boundary, box) {
+  if (process.env[CHILD_ENV] !== '1' || !boundary.title) return box;
+  return { ...box, titleAt: [boundary.title.x, boundary.title.y] };
+}
 
 function variantsOf(arch) {
   return asArray(arch.variants);
@@ -111,7 +119,7 @@ export function filterForCombination(raw, combination) {
 function runLayoutReport(input, output) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [renderer, input, output, '--layout-json'], {
-      env: { ...process.env, ARCHIFY_DIAGNOSTIC_FORMAT: 'json' },
+      env: { ...process.env, ARCHIFY_DIAGNOSTIC_FORMAT: 'json', [CHILD_ENV]: '1' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -190,7 +198,7 @@ export async function checkVariantCombinations(arch, inputArgument) {
       {
         b: Object.fromEntries(asArray(result.report.boundaries).map((box, filtered) => [
           result.boundaryIndex[filtered],
-          [box.x, box.y, box.width, box.height],
+          [box.x, box.y, box.width, box.height, ...(box.titleAt || [])],
         ])),
         c: Object.fromEntries(asArray(result.report.connections).map((connection, filtered) => [
           result.connectionIndex[filtered],
@@ -299,12 +307,10 @@ export function withVariants(svg, arch) {
       const box = layout.b[frameId];
       visible = box !== undefined;
       if (visible && /data-graph-role="structural-frame"/.test(first)) {
-        const origin = ['x', 'y'].map((name) => Number(attr(first, name)));
         lines[block.from] = ['x', 'y', 'width', 'height'].reduce((line, name, index) => setAttr(line, name, box[index]), first);
-        const label = svgBlocks(lines, 0, close).find((candidate) => (
-          /data-graph-role="structural-frame-label"/.test(lines[candidate.from]) && attr(lines[candidate.from], 'data-composition-frame-id') === frameId
-        ));
-        if (label) shiftLines(lines, label, box[0] - origin[0], box[1] - origin[1]);
+      } else if (visible && /data-graph-role="structural-frame-label"/.test(first)) {
+        const mask = lines.slice(block.from, block.to + 1).find((line) => /structural-frame-label-mask/.test(line));
+        if (mask && box.length >= 6) shiftLines(lines, block, box[4] - Number(attr(mask, 'x')), box[5] - Number(attr(mask, 'y')));
       }
     }
     if (!visible) {
@@ -359,7 +365,10 @@ const VARIANT_SCRIPT = `(function () {
     var parts = label ? Array.prototype.slice.call(label.querySelectorAll('rect, text')).map(function (part) {
       return { element: part, x: +part.getAttribute('x'), y: +part.getAttribute('y') };
     }) : [];
-    return { id: id, frame: frame, label: label, x: +frame.getAttribute('x'), y: +frame.getAttribute('y'), parts: parts };
+    var mask = label && label.querySelector('[data-graph-role="structural-frame-label-mask"]');
+    var x = mask ? +mask.getAttribute('x') : +frame.getAttribute('x');
+    var y = mask ? +mask.getAttribute('y') : +frame.getAttribute('y');
+    return { id: id, frame: frame, label: label, x: x, y: y, parts: parts };
   });
   function matches(element) {
     var when = element.getAttribute('data-when');
@@ -440,9 +449,10 @@ const VARIANT_SCRIPT = `(function () {
       if (entry.label) show(entry.label, !!box);
       if (!box) return;
       ['x', 'y', 'width', 'height'].forEach(function (name, index) { entry.frame.setAttribute(name, box[index]); });
+      if (box.length < 6) return;
       entry.parts.forEach(function (part) {
-        part.element.setAttribute('x', part.x + box[0] - entry.x);
-        part.element.setAttribute('y', part.y + box[1] - entry.y);
+        part.element.setAttribute('x', part.x + box[4] - entry.x);
+        part.element.setAttribute('y', part.y + box[5] - entry.y);
       });
     });
     syncIndexes();
@@ -466,10 +476,25 @@ const VARIANT_SCRIPT = `(function () {
     box.style.cssText = 'position:absolute;right:1rem;top:1rem;z-index:11;max-width:18rem;max-height:calc(100% - 6rem);overflow:auto;'
       + 'border:1px solid var(--frontend-stroke);border-radius:0.85rem;background:var(--toolbar-menu-bg);color:var(--toolbar-text);'
       + 'box-shadow:0 18px 48px rgba(0,0,0,0.3);backdrop-filter:blur(16px);font-size:0.72rem;padding:0.6rem 0.7rem;';
-    var heading = document.createElement('strong');
-    heading.textContent = data.title;
-    heading.style.cssText = 'display:block;font-size:0.8rem;margin-bottom:0.35rem;';
+    // The panel floats over the canvas, so its heading folds it away.
+    var heading = document.createElement('button');
+    heading.type = 'button';
+    heading.setAttribute('aria-expanded', 'true');
+    heading.style.cssText = 'display:flex;justify-content:space-between;width:100%;border:0;background:none;color:inherit;cursor:pointer;padding:0;font:inherit;font-size:0.8rem;font-weight:600;';
+    var title = document.createElement('span');
+    title.textContent = data.title;
+    var mark = document.createElement('span');
+    mark.textContent = '\u25be';
+    heading.appendChild(title);
+    heading.appendChild(mark);
     box.appendChild(heading);
+    var body = document.createElement('div');
+    heading.addEventListener('click', function () {
+      var open = heading.getAttribute('aria-expanded') !== 'true';
+      heading.setAttribute('aria-expanded', String(open));
+      body.hidden = !open;
+      mark.textContent = open ? '\u25be' : '\u25b8';
+    });
     data.variants.forEach(function (variant) {
       var row = document.createElement('div');
       row.style.cssText = 'margin-top:0.45rem;';
@@ -490,8 +515,9 @@ const VARIANT_SCRIPT = `(function () {
         options.appendChild(button);
       });
       row.appendChild(options);
-      box.appendChild(row);
+      body.appendChild(row);
     });
+    box.appendChild(body);
     var style = document.createElement('style');
     style.textContent = '#fork-variant-panel button[aria-pressed="true"]{background:var(--frontend-stroke) !important;color:var(--toolbar-menu-bg) !important;font-weight:600;}';
     box.appendChild(style);

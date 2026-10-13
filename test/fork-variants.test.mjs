@@ -78,3 +78,20 @@ test('diagrams without variants keep no variant markup', (t) => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.doesNotMatch(html(), /data-fork-slot|fork-variants-data|data-when/);
 });
+
+test('boundary titles take the position each combination was validated with', (t) => {
+  const input = diagram();
+  // The boundary's top member exists only for ECS, so its frame and title move.
+  input.components.push({ id: 'top', type: 'cloud', label: 'Top', pos: [300, 100], size: [120, 60], when: { host: 'ecs' } });
+  input.boundaries = [{ kind: 'region', label: 'Region', wraps: ['top', 'ecs', 'apps'] }];
+  const { result, html } = render(t, input);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const page = html();
+  const data = JSON.parse(/<script type="application\/json" id="fork-variants-data">(.*?)<\/script>/.exec(page)[1]);
+  const ecs = data.layouts.ecs.b['0'];
+  const apps = data.layouts.apps.b['0'];
+  assert.equal(ecs.length, 6, 'frame box plus title position');
+  assert.ok(apps[5] > ecs[5], 'the title follows the shorter frame');
+  const mask = /data-graph-role="structural-frame-label-mask" x="([\d.]+)" y="([\d.]+)"/.exec(page);
+  assert.deepEqual([Number(mask[1]), Number(mask[2])], [ecs[4], ecs[5]], 'the default view uses the ECS title position');
+});
