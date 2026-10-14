@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { esc } from '../shared/utils.mjs';
 import { asArray, roundedPath } from '../shared/geometry.mjs';
 import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
+import { edgeLabelTop } from './text-size.mjs';
 
 export const MAX_VARIANT_COMBINATIONS = 256;
 const REPORTED_FAILURES = 10;
@@ -256,11 +257,11 @@ function setAttr(line, name, value) {
   return line.replace(new RegExp(`(\\s${name}=")[^"]*(")`), `$1${value}$2`);
 }
 
-function placeLabel(lines, block, labelAt) {
+function placeLabel(lines, block, labelAt, top) {
   for (let index = block.from; index <= block.to; index += 1) {
     if (/<rect\b/.test(lines[index])) {
       const width = Number(attr(lines[index], 'width'));
-      lines[index] = setAttr(setAttr(lines[index], 'x', labelAt[0] - width / 2), 'y', labelAt[1] - 10);
+      lines[index] = setAttr(setAttr(lines[index], 'x', labelAt[0] - width / 2), 'y', labelAt[1] - top);
     } else if (/<text\b/.test(lines[index])) {
       lines[index] = setAttr(setAttr(lines[index], 'x', labelAt[0]), 'y', labelAt[1]);
     }
@@ -303,7 +304,7 @@ export function withVariants(svg, arch) {
       if (visible) {
         const [d, points, labelAt] = checkedLayouts.shapes[shape];
         if (/data-detail="context"/.test(first)) {
-          if (labelAt) placeLabel(lines, block, labelAt);
+          if (labelAt) placeLabel(lines, block, labelAt, edgeLabelTop(arch));
         } else {
           for (let index = block.from; index <= block.to; index += 1) {
             if (/<path\b/.test(lines[index])) lines[index] = setAttr(lines[index], 'd', d);
@@ -350,10 +351,10 @@ export function withVariants(svg, arch) {
     pool,
   };
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
-  return `${output.join('\n')}\n      <script type="application/json" id="fork-variants-data">${json}</script>\n      <script data-archify-fork="variants">\n${VARIANT_SCRIPT}\n      </script>`;
+  return `${output.join('\n')}\n      <script type="application/json" id="fork-variants-data">${json}</script>\n      <script data-archify-fork="variants">\n${variantScript(edgeLabelTop(arch))}\n      </script>`;
 }
 
-const VARIANT_SCRIPT = `(function () {
+const variantScript = (labelTop) => `(function () {
   var data = JSON.parse(document.getElementById('fork-variants-data').textContent);
   var svg = document.querySelector('svg[data-quality-profile]');
   if (!svg) return;
@@ -482,7 +483,7 @@ const VARIANT_SCRIPT = `(function () {
       } else if (geometry[2]) {
         var rect = edge.querySelector('rect');
         var text = edge.querySelector('text');
-        if (rect) { rect.setAttribute('x', geometry[2][0] - (+rect.getAttribute('width')) / 2); rect.setAttribute('y', geometry[2][1] - 10); }
+        if (rect) { rect.setAttribute('x', geometry[2][0] - (+rect.getAttribute('width')) / 2); rect.setAttribute('y', geometry[2][1] - ${labelTop}); }
         if (text) { text.setAttribute('x', geometry[2][0]); text.setAttribute('y', geometry[2][1]); }
       }
     });

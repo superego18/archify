@@ -52,7 +52,7 @@ export function placeAutomaticLabels({
       && segmentRectClearanceWithin(segment, rect, maxOwnRouteDistance) <= maxOwnRouteDistance))
   );
   const rectAt = (label, lx, ly) => ({
-    ...label, lx, ly, x: lx - label.width / 2, y: ly - 10,
+    ...label, lx, ly, x: lx - label.width / 2, y: ly - (label.baselineOffset ?? 10),
   });
   // An opted-in grid layout runs parallel lines through shared gaps. Rank
   // every position along all of the label's own segments: beside the line

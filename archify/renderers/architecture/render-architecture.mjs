@@ -18,6 +18,7 @@ import { facetNodeAttr, facetProblems, facetScript, facetStripes, facetSwatch, w
 import { checkVariantCombinations, hasVariants, variantBoundaryReport, whenAttr, withVariants } from '../fork/variants.mjs';
 import { shortcutScript } from '../fork/shortcuts.mjs';
 import { withNodeImage } from '../fork/node-image.mjs';
+import { applyTextSize, componentTextRows, edgeLabelBoxAt, edgeLabelFont, labelCheckAdvance, labelFontRange, textFitWidth } from '../fork/text-size.mjs';
 import { placeAutomaticLabels, reservedLabelRect } from '../shared/automatic-labels.mjs';
 import { cleanRouteDetourProblems } from '../shared/route-quality.mjs';
 import {
@@ -83,6 +84,7 @@ const layout = {
   boundaryLabelFrameInset: 4,
   legendH: 28,
 };
+applyTextSize(arch, layout, componentTextFit);
 
 const LEGEND_CATALOG = [
   'frontend',
@@ -169,8 +171,7 @@ function connectionLabelBox(conn) {
 }
 
 function connectionLabelBoxAt(conn, [lx, ly]) {
-  const width = Math.max(30, textUnits(conn.label) * 4.8 + 10);
-  return { x: lx - width / 2, y: ly - 10, width, height: 14, lx, ly };
+  return edgeLabelBoxAt(arch, conn.label, lx, ly);
 }
 
 function connectionLabelRects() {
@@ -564,7 +565,7 @@ function validateArchitecture() {
       });
       problems.push(message);
     }
-    const estLabelW = textUnits(c.label) * 6.6;
+    const estLabelW = textUnits(c.label) * labelCheckAdvance(arch);
     if (estLabelW > c.width + 8) {
       const message = `Label "${c.label}" (~${Math.round(estLabelW)}px) is wider than component "${c.id}" (${c.width}px) — shorten the label or widen size.`;
       diagnostics.push({
@@ -1018,7 +1019,7 @@ function buildLayoutReport() {
     x: Math.round(rect.x),
     y: Math.round(rect.y),
     width: Math.round(rect.width),
-    height: 14,
+    height: rect.height,
     labelAt: [Math.round(rect.lx), Math.round(rect.ly)],
   }));
   return {
@@ -1076,7 +1077,7 @@ function renderConnectionLabel(conn, index) {
   if (!box) return '';
   return `        <g data-detail="context" ${focusEdgeAttrs(conn.from, conn.to, conn.label, index, conn.id)}${whenAttr(conn)}>
           <rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="3" class="c-mask"/>
-          <text x="${box.lx}" y="${box.ly}" class="${edgeLabelAccent(conn.variant)}" font-size="8" text-anchor="middle">${esc(conn.label)}</text>
+          <text x="${box.lx}" y="${box.ly}" class="${edgeLabelAccent(conn.variant)}" font-size="${edgeLabelFont(arch)}" text-anchor="middle">${esc(conn.label)}</text>
         </g>`;
 }
 
@@ -1085,15 +1086,15 @@ function renderComponent(c) {
   const accent = componentText[c.type] || 't-muted';
   const cx = c.cx;
   const hasSub = c.sublabel != null && c.sublabel !== '';
-  const labelY = hasSub ? c.y + c.height / 2 - 2 : c.y + c.height / 2 + 4;
+  const { labelY, sublabelY } = componentTextRows(arch, c, hasSub);
   const sub = hasSub
-    ? `\n        <text data-detail="context" x="${cx}" y="${c.y + c.height / 2 + 14}" class="t-muted" font-size="${fittedNodeFontSize(c.sublabel, c.width, componentTextFit.sublabelPreferred, componentTextFit.sublabelMinimum)}" text-anchor="middle">${esc(c.sublabel)}</text>`
+    ? `\n        <text data-detail="context" x="${cx}" y="${sublabelY}" class="t-muted" font-size="${fittedNodeFontSize(c.sublabel, textFitWidth(arch, c, c.width), componentTextFit.sublabelPreferred, componentTextFit.sublabelMinimum)}" text-anchor="middle">${esc(c.sublabel)}</text>`
     : '';
   const tag = c.tag
     ? `\n        <text data-detail="fine" x="${cx}" y="${c.y + c.height - 8}" class="${accent}" font-size="${fittedNodeFontSize(c.tag, c.width, componentTextFit.tagPreferred, componentTextFit.tagMinimum)}" text-anchor="middle">${esc(c.tag)}</text>`
     : '';
   const brand = renderBrandMark(c, { x: c.x + c.width - 22, y: c.y + 6 });
-  const labelFontSize = fittedNodeFontSize(c.label, brandLabelFitWidth(c, c.width), 11, 8);
+  const labelFontSize = fittedNodeFontSize(c.label, textFitWidth(arch, c, brandLabelFitWidth(c, c.width)), ...labelFontRange(arch));
   const passport = { kind: c.type, sublabel: c.sublabel, tag: c.tag, context: componentContext(c), ...brandMetadataFor(c) };
   return `        <g ${focusNodeAttrs(c.id, c.label, passport, arch.meta.locale)}${nodeNoteAttr(c)}${facetNodeAttr(arch, c)}${whenAttr(c)}>
           ${focusNodeTitle(c.label, passport)}

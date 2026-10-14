@@ -53,7 +53,8 @@
           "items": false,
           "minItems": 2,
           "maxItems": 2
-        }
+        },
+        "textSize": { "type": "object", "additionalProperties": false, "properties": { "label": { "type": "number", "minimum": 6, "maximum": 32 }, "sublabel": { "type": "number", "minimum": 6, "maximum": 32 }, "edgeLabel": { "type": "number", "minimum": 6, "maximum": 32 }, "boundaryLabel": { "type": "number", "minimum": 6, "maximum": 32 } }, "description": "Fork extension: preferred px sizes of card names (label), card descriptions (sublabel), connection labels (edgeLabel) and boundary titles (boundaryLabel); measurements and checks use the same sizes." }
       }
     },
     "layout": {

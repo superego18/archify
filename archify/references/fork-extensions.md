@@ -83,6 +83,23 @@ Rules:
 - The delivered SVG is the default combination; the other elements wait as markup and join the diagram when a combination needs them. A "구성 선택"/"Variants" panel at the top right switches options.
 - Legend counts and the node list follow the chosen combination. Hidden elements drop their node and edge hooks, so focus highlights, relationship lists and search ignore them.
 
+## Architecture text sizes
+
+`meta.textSize` sets the preferred px size of each text kind. Every field is optional (6–32); a missing one keeps its default.
+
+```json
+"meta": { "title": "…", "output": "…", "textSize": { "label": 14, "sublabel": 11, "edgeLabel": 11, "boundaryLabel": 12 } }
+```
+
+| Field | Default | Effect |
+|---|---|---|
+| `label` | 11 (shrinks to 8) | Card name. Shrinks to fit the card, never below 8 (or the chosen size if smaller). The static name-overflow check measures at the smaller of this size and 11. |
+| `sublabel` | 9 (shrinks to 6) | Card description. Shrinks to fit, like the name. |
+| `edgeLabel` | 8 | Connection label. Its mask is `units × 0.6 × size + 10` wide and `size + 6` tall, growing upward so its bottom stays 4px under the baseline. |
+| `boundaryLabel` | 9 | Boundary title. The title rail, its mask and the frame use this size, with the gap to the cards and stacked titles below widened by the extra descent. |
+
+With a `label` or `sublabel` size, the two text rows are spaced for their sizes and centred in the card. With any size set, cards with an icon slot (`iconImage` or `iconSlot`) fit their text to the space beside the slot, so long text on a narrow card shrinks below the chosen size; widen the card to keep it (needed width ≈ `text units × 0.6 × size + 50` with a slot, `+ 8` without, where a CJK character counts as 2 units). Masks, overlap checks, automatic label placement, variant combinations and browser checks all use the same sizes. Diagrams without `textSize` render unchanged.
+
 ## Viewer shortcuts
 
 `"shortcuts": false` at the top level turns off the viewer's single-key shortcuts (T theme, S style, E export, F, M, L, R, /, ?, +, -, 0) and hides their hints. Escape, Enter and arrow keys keep working, and typing in any field — including fields inside shadow-DOM widgets — is unaffected.
