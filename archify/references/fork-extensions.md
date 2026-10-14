@@ -82,6 +82,7 @@ Rules:
 - Every combination (at most 256) is rendered on its own and must pass the normal layout checks; a failure names the combination. Each combination's routes, label positions and boundary boxes are the ones the viewer applies.
 - The delivered SVG is the default combination; the other elements wait as markup and join the diagram when a combination needs them. A "구성 선택"/"Variants" panel at the top right switches options.
 - Legend counts and the node list follow the chosen combination. Hidden elements drop their node and edge hooks, so focus highlights, relationship lists and search ignore them.
+- Switching options rebuilds an open route and kind lens on the new combination: a route whose two ends are still shown is found again (its steps may change), otherwise it is cleared; a lens keeps the kinds still shown.
 
 ## Architecture text sizes
 

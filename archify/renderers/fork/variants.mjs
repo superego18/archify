@@ -444,6 +444,32 @@ const variantScript = (labelTop) => `(function () {
       return Array.isArray(allowed) ? allowed.indexOf(choice[id]) !== -1 : allowed === choice[id];
     });
   }
+  function routeState() {
+    var probe = window.Archify && Archify.routeProbe;
+    var mode = probe && probe.active();
+    if (!mode) return null;
+    var result = probe.result();
+    var start = svg.querySelector('g[data-route-start][data-node-id]');
+    return { mode: mode, source: result ? result.source : start && start.getAttribute('data-node-id'), target: result && result.target };
+  }
+  // The route tool reads the live graph, which now holds only the chosen
+  // combination: both ends still shown means the route is found again (it may
+  // take other steps), otherwise the route is cleared.
+  function restoreRoute(route) {
+    var probe = Archify.routeProbe;
+    function shown(id) { return !!id && !!svg.querySelector('g[data-node-id="' + CSS.escape(id) + '"]'); }
+    if (route.mode === 'source') { probe.begin({ focusNode: false }); return; }
+    if (shown(route.source) && (!route.target || shown(route.target))) {
+      probe.begin({ source: route.source, focusNode: false });
+      if (!route.target || probe.choose(route.target, { updateUrl: false })) return;
+    }
+    probe.clear({ preserveView: true, restoreFocus: false });
+  }
+  function restoreLens(kinds) {
+    var lens = Archify.semanticLens;
+    var kept = kinds.filter(function (kind) { return lens.select(kind); });
+    if (!kept.length) lens.clear({ preserveView: true });
+  }
   function apply() {
     // A variant that does not apply to the current choice falls back to its
     // default, which is the combination that was checked for it.
@@ -461,6 +487,15 @@ const variantScript = (labelTop) => `(function () {
     var clear = document.getElementById('btn-focus-clear');
     var focusedNode = chip && !chip.hidden && focused ? svg.querySelector('g[data-node-id="' + CSS.escape(focused.textContent) + '"]') : null;
     if (focusedNode && !matches(focusedNode) && clear) clear.click();
+    // A route was found on the previous combination's graph, so drop its
+    // highlight while every element is still findable and look it up again
+    // once the new combination is in place.
+    var route = routeState();
+    if (route) Archify.routeProbe.clear({ updateUrl: false, preserveView: true, restoreFocus: false });
+    // A kind lens counted and traced the previous combination; it is chosen
+    // again on the new one, keeping only the kinds that are still shown.
+    var lens = window.Archify && Archify.semanticLens && Archify.semanticLens.active();
+    if (lens) Archify.semanticLens.clear({ updateUrl: false, preserveView: true });
     var hiddenNodes = {};
     svg.querySelectorAll('g[data-node-id], g[data-variant-node-id]').forEach(function (node) {
       var visible = matches(node);
@@ -500,6 +535,8 @@ const variantScript = (labelTop) => `(function () {
       });
     });
     syncIndexes();
+    if (route) restoreRoute(route);
+    if (lens) restoreLens(lens);
     document.querySelectorAll('#fork-variant-panel button[data-variant]').forEach(function (button) {
       button.setAttribute('aria-pressed', String(choice[button.getAttribute('data-variant')] === button.getAttribute('data-option')));
     });
@@ -526,6 +563,9 @@ const variantScript = (labelTop) => `(function () {
     box.style.cssText = 'position:absolute;right:1rem;top:1rem;z-index:11;max-width:18rem;max-height:calc(100% - 6rem);overflow:auto;'
       + 'border:1px solid var(--frontend-stroke);border-radius:0.85rem;background:var(--toolbar-menu-bg);color:var(--toolbar-text);'
       + 'box-shadow:0 18px 48px rgba(0,0,0,0.3);backdrop-filter:blur(16px);font-size:0.72rem;padding:0.6rem 0.7rem;';
+    // A zoomed canvas pans from any press inside it, which would swallow the
+    // option clicks, so presses on the panel stay with the panel.
+    box.addEventListener('pointerdown', function (event) { event.stopPropagation(); });
     // The panel floats over the canvas, so its heading folds it away.
     var heading = document.createElement('button');
     heading.type = 'button';

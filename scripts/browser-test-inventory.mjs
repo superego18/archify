@@ -40,4 +40,5 @@ export const browserTestFiles = [
   'lifecycle-note-contrast-browser.test.mjs',
   'sequence-segment-contrast-browser.test.mjs',
   'graphic-quality-browser.test.mjs',
+  'fork-variants-browser.test.mjs',
 ];
